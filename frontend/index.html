@@ -3,7 +3,38 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Green Urban Dashboard - AI Innovation Challenge</title>
+    <title>LUNPIA - Land Use & Vegetation NDVI Prediction with Intelligent Analytics</title>
+    
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32x32.png">
+    <link rel="icon" type="image/png" sizes="16x16" href="assets/favicon-16x16.png">
+    <link rel="apple-touch-icon" sizes="180x180" href="assets/apple-touch-icon.png">
+    <link rel="icon" type="image/png" href="assets/logo_lunpia.png">
+    <link rel="manifest" href="assets/site.webmanifest">
+    
+    <!-- Meta Tags for SEO -->
+    <meta name="description" content="LUNPIA - Platform analisis vegetasi berbasis AI untuk Kota Semarang menggunakan NDVI dan Google Earth Engine">
+    <meta name="keywords" content="NDVI, vegetasi, Semarang, AI, machine learning, satellite, GEE">
+    <meta name="author" content="LUNPIA Team">
+    <meta name="theme-color" content="#537531">
+    
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="">
+    <meta property="og:title" content="LUNPIA - Land Use & Vegetation NDVI Prediction">
+    <meta property="og:description" content="Platform analisis vegetasi berbasis AI untuk Kota Semarang">
+    <meta property="og:image" content="assets/logo_lunpia.png">
+    
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:title" content="LUNPIA - Land Use & Vegetation NDVI Prediction">
+    <meta property="twitter:description" content="Platform analisis vegetasi berbasis AI untuk Kota Semarang">
+    <meta property="twitter:image" content="assets/logo_lunpia.png">
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     
     <!-- Leaflet CSS -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css"
@@ -14,7 +45,7 @@
     <link rel="stylesheet" href="css/style.css">
     
     <!-- Font Awesome untuk icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
     
     <!-- Plotly.js untuk visualisasi grafik -->
     <script src="https://cdn.plot.ly/plotly-latest.min.js"></script>
@@ -24,11 +55,21 @@
     <header class="header">
         <div class="container">
             <div class="header-content">
-                <h1 class="logo">
-                    <i class="fas fa-leaf"></i>
-                    Green Urban Dashboard
-                </h1>
-                <p class="subtitle">Analisis Vegetasi Kota Semarang dengan AI</p>
+                <div class="brand">
+                    <div class="logo-container">
+                        <div class="logo-icon">
+                            <img src="assets/logo_lunpia.png" alt="LUNPIA Logo" class="logo-image">
+                        </div>
+                        <div class="brand-text">
+                            <h1 class="brand-title">LUNPIA</h1>
+                            <span class="brand-tagline">Land Use & Vegetation NDVI Prediction with Intelligent Analytics</span>
+                        </div>
+                    </div>
+                    <div class="location-badge">
+                        <i class="fas fa-map-marker-alt"></i>
+                        <span>Kota Semarang</span>
+                    </div>
+                </div>
             </div>
         </div>
     </header>
@@ -37,408 +78,697 @@
     <main class="main-content">
         <div class="container">
             <!-- Control Panel -->
-            <div class="control-panel">
-                <div class="panel-section">
-                    <h3><i class="fas fa-map-marker-alt"></i> Lokasi Analisis</h3>
-                    <div class="analysis-mode">
-                        <label class="mode-toggle">
-                            <input type="radio" name="analysisMode" value="district" checked>
-                            <span>Mode Kecamatan</span>
-                        </label>
-                        <label class="mode-toggle">
-                            <input type="radio" name="analysisMode" value="coordinate">
-                            <span>Mode Koordinat</span>
-                        </label>
+            <div class="dashboard-grid">
+                <!-- Analysis Control Card -->
+                <div class="control-card">
+                    <div class="card-header">
+                        <div class="card-icon">
+                            <i class="fas fa-search-location"></i>
+                        </div>
+                        <div class="card-title">
+                            <h3>Lokasi Analisis</h3>
+                            <p>Pilih metode analisis Anda</p>
+                        </div>
                     </div>
                     
-                    <!-- Clear Results Button -->
-                    <div class="clear-section" style="margin-top: 15px;">
-                        <button id="clearResultsBtn" class="btn btn-secondary">
-                            <i class="fas fa-eraser"></i>
-                            Bersihkan Hasil
-                        </button>
-                    </div>
-                    <div class="input-group" id="coordinateInputs" style="display: none;">
-                        <div class="input-field">
-                            <label for="latitude">Latitude:</label>
-                            <input type="number" id="latitude" step="0.000001" value="-7.0051" placeholder="Contoh: -7.0051">
+                    <div class="analysis-modes">
+                        <div class="mode-tabs">
+                            <label class="mode-tab active" data-mode="district">
+                                <input type="radio" name="analysisMode" value="district" checked>
+                                <div class="tab-content">
+                                    <i class="fas fa-city"></i>
+                                    <span>Mode Kecamatan</span>
+                                </div>
+                            </label>
+                            <label class="mode-tab" data-mode="coordinate">
+                                <input type="radio" name="analysisMode" value="coordinate">
+                                <div class="tab-content">
+                                    <i class="fas fa-crosshairs"></i>
+                                    <span>Mode Koordinat</span>
+                                </div>
+                            </label>
                         </div>
-                        <div class="input-field">
-                            <label for="longitude">Longitude:</label>
-                            <input type="number" id="longitude" step="0.000001" value="110.4381" placeholder="Contoh: 110.4381">
-                        </div>
                     </div>
-                    <button id="analyzeBtn" class="btn btn-primary" style="display: none;">
-                        <i class="fas fa-search"></i>
-                        Analisis Koordinat
-                    </button>
-                </div>
 
-                <!-- Quick District Selection -->
-                <div class="panel-section">
-                    <h3><i class="fas fa-map"></i> Pilih Area Analisis</h3>
-                    
-                    <!-- Tombol untuk seluruh kota -->
-                    <div class="city-wide-section">
-                        <button id="analyzeCityBtn" class="btn btn-city-wide">
-                            <i class="fas fa-city"></i>
-                            Kota Semarang (Keseluruhan)
-                        </button>
-                    </div>
-                    
-                    <h4><i class="fas fa-map-marked-alt"></i> Atau Pilih Kecamatan</h4>
-                    <div class="city-buttons">
-                        <!-- Tombol kecamatan akan dimuat secara dinamis dari API -->
-                        <div class="loading-districts">
-                            <i class="fas fa-spinner fa-spin"></i>
+                    <!-- District Selection -->
+                    <div class="district-selection" id="districtSelection">
+                        <div class="selection-header">
+                            <h4><i class="fas fa-map"></i> Pilih Kecamatan</h4>
+                        </div>
+                        <div class="districts-grid" id="districtButtons">
+                            <!-- District buttons akan diisi secara dinamis -->
+                        </div>
+                        <div class="district-loading" id="districtLoading">
+                            <div class="loading-spinner-small"></div>
                             <span>Memuat data kecamatan...</span>
                         </div>
                     </div>
+
+                    <!-- Coordinate Inputs -->
+                    <div class="coordinate-inputs hidden" id="coordinateInputs">
+                        <div class="input-row">
+                            <div class="modern-input">
+                                <label for="latitude">Lintang</label>
+                                <div class="input-wrapper">
+                                    <i class="fas fa-globe-americas"></i>
+                                    <input type="number" id="latitude" placeholder="-7.0000" step="0.000001">
+                                </div>
+                            </div>
+                            <div class="modern-input">
+                                <label for="longitude">Bujur</label>
+                                <div class="input-wrapper">
+                                    <i class="fas fa-globe-americas"></i>
+                                    <input type="number" id="longitude" placeholder="110.0000" step="0.000001">
+                                </div>
+                            </div>
+                        </div>
+                        <button id="analyzeBtn" class="btn btn-primary hidden">
+                            <i class="fas fa-analytics"></i>
+                            <span>Analisis Lokasi</span>
+                        </button>
+                    </div>
+                </div>
+
+                <!-- City-wide Analysis Card -->
+                <div class="control-card">
+                    <div class="card-header">
+                        <div class="card-icon city">
+                            <i class="fas fa-city"></i>
+                        </div>
+                        <div class="card-title">
+                            <h3>Analisis Seluruh Kota</h3>
+                            <p>Analisis seluruh Kota Semarang</p>
+                        </div>
+                    </div>
+                    
+                    <div class="city-analysis-content">
+                        <div class="feature-list">
+                            <div class="feature-item">
+                                <i class="fas fa-chart-line"></i>
+                                <span>Pemetaan vegetasi komprehensif</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-satellite"></i>
+                                <span>Integrasi data satelit</span>
+                            </div>
+                            <div class="feature-item">
+                                <i class="fas fa-brain"></i>
+                                <span>Prediksi bertenaga AI</span>
+                            </div>
+                        </div>
+                        
+                        <button id="analyzeCityBtn" class="btn btn-city-wide">
+                            <i class="fas fa-rocket"></i>
+                            <span>Mulai Analisis Kota</span>
+                        </button>
+                        
+                        <!-- Test Button for Demo (remove in production) -->
+                        <button id="testResultsBtn" class="btn btn-secondary" style="margin-top: 1rem;">
+                            <i class="fas fa-flask"></i>
+                            <span>Test Hasil (Demo)</span>
+                        </button>
+                        
+                        <button id="testLSTMBtn" class="btn btn-primary" style="margin-top: 0.5rem;">
+                            <i class="fas fa-chart-line"></i>
+                            <span>Test LSTM Chart</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
-            <!-- Dashboard Grid -->
-            <div class="dashboard-grid">
+            <!-- Map and Analytics Section -->
+            <div class="main-grid">
                 <!-- Map Container -->
-                <div class="map-container">
-                    <div class="map-header">
-                        <h3><i class="fas fa-globe"></i> Peta Interaktif</h3>
+                <div class="map-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h3><i class="fas fa-map"></i> Peta Interaktif</h3>
+                            <p>Visualisasi analisis vegetasi</p>
+                        </div>
+                        <div class="map-toolbar">
+                            <div class="toolbar-group">
+                                <button class="tool-btn" data-tool="critical" id="detectCriticalBtn">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span>Area Kritis</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="map-container">
+                        <div id="map" class="interactive-map"></div>
+                        
+                        <!-- Map Overlay Controls -->
                         <div class="map-controls">
-                            <label class="layer-toggle">
-                                <input type="checkbox" id="ndviLayerToggle" checked>
-                                <span>Tampilkan Layer NDVI</span>
-                            </label>
-                            <label class="layer-toggle">
-                                <input type="checkbox" id="borderLayerToggle" checked>
-                                <span>Tampilkan Border Kecamatan</span>
-                            </label>
-                            <button id="detectCriticalBtn" class="btn-critical-map">
-                                <i class="fas fa-exclamation-triangle"></i> 
-                                Deteksi Area Kritis
-                            </button>
-                        </div>
-                    </div>
-                    <div id="map" class="map"></div>
-                    <div class="map-legend">
-                        <h4>Legenda:</h4>
-                        <div class="legend-section">
-                            <h5>Klasifikasi Vegetasi:</h5>
-                            <div class="legend-item">
-                                <span class="legend-color low"></span>
-                                <span>Rendah (0-0.3)</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-color medium"></span>
-                                <span>Sedang (0.3-0.6)</span>
-                            </div>
-                            <div class="legend-item">
-                                <span class="legend-color high"></span>
-                                <span>Tinggi (0.6-1.0)</span>
-                            </div>
-                        </div>
-                        <div class="legend-section">
-                            <h5>NDVI Color Scale:</h5>
-                            <div class="ndvi-gradient"></div>
-                            <div class="ndvi-labels">
-                                <span>-0.2</span>
-                                <span>0.0</span>
-                                <span>0.4</span>
-                                <span>0.8</span>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-
-                <!-- Results Panel -->
-                <div class="results-container">
-                    <div class="results-header">
-                        <h3><i class="fas fa-chart-bar"></i> Hasil Analisis</h3>
-                        <button id="downloadPdfBtn" class="btn btn-download hidden" title="Download Hasil Analisis PDF">
-                            <i class="fas fa-download"></i> Download PDF
-                        </button>
-                    </div>
-                    
-                    <!-- Loading Indicator -->
-                    <div id="loading" class="loading hidden">
-                        <i class="fas fa-spinner fa-spin"></i>
-                        <p id="loadingText">Menganalisis data satelit...</p>
-                        <div class="loading-bar-container">
-                            <div class="loading-bar">
-                                <div id="loadingProgress" class="loading-progress"></div>
-                            </div>
-                            <span id="loadingPercentage" class="loading-percentage">0%</span>
-                        </div>
-                    </div>
-
-                    <!-- NDVI Data -->
-                    <div id="ndviResults" class="result-section hidden">
-                        <h4><i class="fas fa-satellite"></i> Data NDVI (Sentinel-2)</h4>
-                        <div class="data-grid">
-                            <div class="data-item">
-                                <span class="data-label">NDVI Rata-rata:</span>
-                                <span id="ndviMean" class="data-value">-</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">NDVI Minimum:</span>
-                                <span id="ndviMin" class="data-value">-</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">NDVI Maksimum:</span>
-                                <span id="ndviMax" class="data-value">-</span>
-                            </div>
-                            <div class="data-item">
-                                <span class="data-label">Tanggal Data:</span>
-                                <span id="dataDate" class="data-value">-</span>
-                            </div>
-                        </div>
-                        
-                        <!-- NDVI Interpretation -->
-                        <div id="ndviInterpretation"></div>
-                    </div>
-
-                    <!-- Prediction Results -->
-                    <div id="predictionResults" class="result-section hidden">
-                        <h4><i class="fas fa-brain"></i> Prediksi AI</h4>
-                        <div class="prediction-main">
-                            <div class="prediction-class">
-                                <span class="prediction-label">Klasifikasi:</span>
-                                <span id="predictionClass" class="prediction-value">-</span>
-                            </div>
-                        </div>
-                        <div class="confidence-bars">
-                            <h5>Tingkat Kepercayaan:</h5>
-                            <div class="confidence-item">
-                                <span class="confidence-label">Vegetasi Rendah:</span>
-                                <div class="confidence-bar">
-                                    <div id="confidenceLow" class="confidence-fill"></div>
-                                </div>
-                                <span id="confidenceLowText" class="confidence-text">0%</span>
-                            </div>
-                            <div class="confidence-item">
-                                <span class="confidence-label">Vegetasi Sedang:</span>
-                                <div class="confidence-bar">
-                                    <div id="confidenceMedium" class="confidence-fill"></div>
-                                </div>
-                                <span id="confidenceMediumText" class="confidence-text">0%</span>
-                            </div>
-                            <div class="confidence-item">
-                                <span class="confidence-label">Vegetasi Tinggi:</span>
-                                <div class="confidence-bar">
-                                    <div id="confidenceHigh" class="confidence-fill"></div>
-                                </div>
-                                <span id="confidenceHighText" class="confidence-text">0%</span>
-                            </div>
-                        </div>
-                    </div>
-
-                    <!-- NDVI Prediction Results -->
-                    <div id="ndviPredictionResults" class="result-section hidden">
-                        <h4><i class="fas fa-chart-line"></i> Prediksi NDVI (LSTM)</h4>
-                        <div class="prediction-controls">
                             <div class="control-group">
-                                <label for="predictionDays">Prediksi untuk (hari):</label>
-                                <select id="predictionDays">
-                                    <option value="7">7 hari</option>
-                                    <option value="14">14 hari</option>
-                                    <option value="30" selected>30 hari</option>
-                                    <option value="60">60 hari</option>
-                                </select>
+                                <label class="control-toggle">
+                                    <input type="checkbox" id="ndviLayerToggle" checked>
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-label">Layer NDVI</span>
+                                </label>
+                                <label class="control-toggle">
+                                    <input type="checkbox" id="borderLayerToggle" checked>
+                                    <span class="toggle-slider"></span>
+                                    <span class="toggle-label">Batas Kecamatan</span>
+                                </label>
                             </div>
-                            <button id="predictNDVIBtn" class="btn btn-predict">
-                                <i class="fas fa-chart-line"></i> Prediksi NDVI
+                        </div>
+                        
+                        <!-- Map Legend -->
+                        <div class="map-legend" id="mapLegend">
+                            <div class="legend-header">
+                                <h4><i class="fas fa-palette"></i> Legenda</h4>
+                                <button id="toggleLegend" class="legend-toggle">
+                                    <i class="fas fa-chevron-up"></i>
+                                </button>
+                            </div>
+                            <div class="legend-content">
+                                <div id="districtLegend" class="legend-section">
+                                    <h5>Batas Kecamatan</h5>
+                                    <div class="legend-items">
+                                        <div class="legend-item">
+                                            <span class="legend-color" style="background: transparent; border: 2px solid #3b82f6; width: 16px; height: 16px;"></span>
+                                            <span class="legend-label">Batas Kecamatan</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="legend-color" style="background: rgba(59, 130, 246, 0.2); border: 2px solid #3b82f6;"></span>
+                                            <span class="legend-label">Kecamatan Terpilih</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="ndviLegend" class="legend-section hidden">
+                                    <h5>Klasifikasi NDVI</h5>
+                                    <div class="legend-items">
+                                        <div class="legend-item">
+                                            <span class="legend-color" style="background: #d73027;"></span>
+                                            <span class="legend-label">Sangat Rendah (&lt; 0.2)</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="legend-color" style="background: #fc8d59;"></span>
+                                            <span class="legend-label">Rendah (0.2 - 0.4)</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="legend-color" style="background: #fee08b;"></span>
+                                            <span class="legend-label">Sedang (0.4 - 0.6)</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="legend-color" style="background: #abd9e9;"></span>
+                                            <span class="legend-label">Tinggi (0.6 - 0.8)</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="legend-color" style="background: #4575b4;"></span>
+                                            <span class="legend-label">Sangat Tinggi (&gt; 0.8)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div id="criticalLegend" class="legend-section hidden">
+                                    <h5>Area Kritis</h5>
+                                    <div class="legend-items">
+                                        <div class="legend-item">
+                                            <span class="legend-color" style="background: #ef4444;"></span>
+                                            <span class="legend-label">Area Vegetasi Kritis</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="legend-icon"><i class="fas fa-exclamation-triangle" style="color: #ef4444;"></i></span>
+                                            <span class="legend-label">Marker Area Kritis</span>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="legend-section">
+                                    <h5>Skala Warna NDVI</h5>
+                                    <div class="ndvi-gradient"></div>
+                                    <div class="ndvi-labels">
+                                        <span>-0.2</span>
+                                        <span>0.0</span>
+                                        <span>0.4</span>
+                                        <span>0.8</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Analytics Results Panel -->
+                <div class="analytics-section">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h3><i class="fas fa-chart-bar"></i> Hasil Analisis</h3>
+                            <p>Analitik vegetasi dan prediksi AI</p>
+                        </div>
+                        <div class="results-toolbar">
+                            <button id="clearResultsBtn" class="tool-btn secondary">
+                                <i class="fas fa-refresh"></i>
+                                <span>Bersihkan</span>
+                            </button>
+                            <button id="downloadPdfBtn" class="tool-btn download hidden">
+                                <i class="fas fa-download"></i>
+                                <span>Unduh PDF</span>
                             </button>
                         </div>
+                    </div>
+
+                    <!-- Loading State -->
+                    <div id="loading" class="loading-state hidden">
+                        <div class="loading-animation">
+                            <div class="loading-spinner"></div>
+                            <div class="loading-pulse"></div>
+                        </div>
+                        <div class="loading-content">
+                            <h4 id="loadingText">Menganalisis data satelit...</h4>
+                            <div class="progress-container">
+                                <div class="progress-bar">
+                                    <div id="loadingProgress" class="progress-fill"></div>
+                                </div>
+                                <span id="loadingPercentage" class="progress-text">0%</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Results Cards Grid -->
+                    <div class="results-grid">
+                        <!-- NDVI Results Card -->
+                        <div id="ndviResults" class="result-card hidden">
+                            <div class="card-header">
+                                <div class="card-icon satellite">
+                                    <i class="fas fa-satellite"></i>
+                                </div>
+                                <div class="card-title">
+                                    <h4>Data NDVI</h4>
+                                    <span>Satelit Sentinel-2</span>
+                                </div>
+                            </div>
+                            
+                            <div class="card-content">
+                                <div class="metrics-grid">
+                                    <div class="metric-item">
+                                        <div class="metric-label">Rata-rata NDVI</div>
+                                        <div id="ndviMean" class="metric-value">-</div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-label">Minimum</div>
+                                        <div id="ndviMin" class="metric-value">-</div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-label">Maksimum</div>
+                                        <div id="ndviMax" class="metric-value">-</div>
+                                    </div>
+                                    <div class="metric-item">
+                                        <div class="metric-label">Tanggal Data</div>
+                                        <div id="dataDate" class="metric-value">-</div>
+                                    </div>
+                                </div>
+                                
+                                <div id="ndviInterpretation" class="interpretation-panel"></div>
+                            </div>
+                        </div>
+
+                        <!-- AI Prediction Card -->
+                        <div id="predictionResults" class="result-card hidden">
+                            <div class="card-header">
+                                <div class="card-icon ai">
+                                    <i class="fas fa-brain"></i>
+                                </div>
+                                <div class="card-title">
+                                    <h4>Prediksi AI</h4>
+                                    <span>Analisis Machine Learning</span>
+                                </div>
+                            </div>
+                            
+                            <div class="card-content">
+                                <div class="prediction-result">
+                                    <div class="prediction-badge">
+                                        <span class="badge-label">Klasifikasi</span>
+                                        <span id="predictionClass" class="badge-value">-</span>
+                                    </div>
+                                </div>
+                                
+                                <div class="confidence-section">
+                                    <h5>Tingkat Kepercayaan</h5>
+                                    <div class="confidence-bars">
+                                        <div class="confidence-item">
+                                            <div class="confidence-label">
+                                                <span>Vegetasi Rendah</span>
+                                                <span id="confidenceLowText" class="confidence-percent">-</span>
+                                            </div>
+                                            <div class="confidence-bar">
+                                                <div id="confidenceLow" class="confidence-fill low"></div>
+                                            </div>
+                                        </div>
+                                        <div class="confidence-item">
+                                            <div class="confidence-label">
+                                                <span>Vegetasi Sedang</span>
+                                                <span id="confidenceMediumText" class="confidence-percent">-</span>
+                                            </div>
+                                            <div class="confidence-bar">
+                                                <div id="confidenceMedium" class="confidence-fill medium"></div>
+                                            </div>
+                                        </div>
+                                        <div class="confidence-item">
+                                            <div class="confidence-label">
+                                                <span>Vegetasi Tinggi</span>
+                                                <span id="confidenceHighText" class="confidence-percent">-</span>
+                                            </div>
+                                            <div class="confidence-bar">
+                                                <div id="confidenceHigh" class="confidence-fill high"></div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- LSTM Prediction Container - Separate Section -->
+        <div class="lstm-prediction-section">
+            <div class="container">
+                <div id="lstmPredictionContainer" class="lstm-prediction-wrapper hidden">
+                    <div class="section-header">
+                        <div class="section-title">
+                            <h3><i class="fas fa-brain"></i> Prediksi LSTM - Neural Network</h3>
+                            <p>Peramalan NDVI menggunakan Long Short-Term Memory</p>
+                        </div>
+                        <div class="results-toolbar">
+                            <button id="exportChartBtn" class="tool-btn download">
+                                <i class="fas fa-download"></i>
+                                <span>Export Chart</span>
+                            </button>
+                        </div>
+                    </div>
+                    
+                    <div class="lstm-content-grid">
+                        <!-- Statistics Panel -->
+                        <div class="lstm-stats-panel">
+                            <div class="prediction-controls">
+                                <div class="control-row">
+                                    <div class="modern-input">
+                                        <label for="predictionDays">Periode Prediksi</label>
+                                        <div class="input-wrapper">
+                                            <i class="fas fa-calendar-alt"></i>
+                                            <select id="predictionDays">
+                                                <option value="7">7 hari ke depan</option>
+                                                <option value="14">14 hari ke depan</option>
+                                                <option value="30" selected>30 hari ke depan</option>
+                                                <option value="60">60 hari ke depan</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <button id="predictNDVIBtn" class="btn btn-primary">
+                                        <i class="fas fa-chart-line"></i>
+                                        <span>Buat Prediksi LSTM</span>
+                                    </button>
+                                </div>
+                            </div>
+                            
+                            <!-- Loading state for prediction -->
+                            <div id="predictionLoading" class="prediction-loading hidden">
+                                <div class="loading-spinner-small"></div>
+                                <span>Menghitung prediksi LSTM...</span>
+                            </div>
+                            
+                            <!-- Enhanced Prediction Stats -->
+                            <div id="predictionStats" class="prediction-stats hidden">
+                                <div class="stats-header">
+                                    <h5><i class="fas fa-analytics"></i> Statistik Prediksi</h5>
+                                </div>
+                                <div class="stats-grid">
+                                    <div class="stat-card">
+                                        <div class="stat-icon">
+                                            <i class="fas fa-chart-bar"></i>
+                                        </div>
+                                        <div class="stat-content">
+                                            <div class="stat-label">Rata-rata Prediksi</div>
+                                            <div id="predAvg" class="stat-value">-</div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-icon">
+                                            <i class="fas fa-trending-up"></i>
+                                        </div>
+                                        <div class="stat-content">
+                                            <div class="stat-label">Tren Perubahan</div>
+                                            <div id="predTrend" class="stat-value">-</div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-icon">
+                                            <i class="fas fa-arrow-up"></i>
+                                        </div>
+                                        <div class="stat-content">
+                                            <div class="stat-label">Maksimum NDVI</div>
+                                            <div id="predMax" class="stat-value">-</div>
+                                        </div>
+                                    </div>
+                                    <div class="stat-card">
+                                        <div class="stat-icon">
+                                            <i class="fas fa-arrow-down"></i>
+                                        </div>
+                                        <div class="stat-content">
+                                            <div class="stat-label">Minimum NDVI</div>
+                                            <div id="predMin" class="stat-value">-</div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- Prediction Interpretation -->
+                                <div id="predictionInterpretation" class="prediction-interpretation">
+                                    <!-- Interpretasi akan ditambahkan secara dinamis -->
+                                </div>
+                            </div>
+                        </div>
                         
-                        <div id="predictionChart" class="chart-container hidden">
-                            <!-- Chart will be rendered here -->
-                        </div>
-                        
-                        <div id="predictionStats" class="prediction-stats hidden">
-                            <h5>Statistik Prediksi:</h5>
-                            <div class="stats-grid">
-                                <div class="stat-item">
-                                    <span class="stat-label">Rata-rata:</span>
-                                    <span id="predAvg" class="stat-value">-</span>
+                        <!-- Chart Panel -->
+                        <div class="lstm-chart-panel">
+                            <div id="predictionChart" class="lstm-chart-container">
+                                <div class="chart-header">
+                                    <h5><i class="fas fa-chart-line"></i> Prediksi NDVI dengan Model LSTM</h5>
+                                    <div class="chart-legend">
+                                        <div class="legend-item">
+                                            <span class="legend-color historical"></span>
+                                            <span>Data Historis</span>
+                                        </div>
+                                        <div class="legend-item">
+                                            <span class="legend-color prediction"></span>
+                                            <span>Prediksi LSTM</span>
+                                        </div>
+                                    </div>
                                 </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Minimum:</span>
-                                    <span id="predMin" class="stat-value">-</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Maksimum:</span>
-                                    <span id="predMax" class="stat-value">-</span>
-                                </div>
-                                <div class="stat-item">
-                                    <span class="stat-label">Trend:</span>
-                                    <span id="predTrend" class="stat-value">-</span>
+                                <div class="chart-body">
+                                    <!-- Chart akan dirender di sini -->
                                 </div>
                             </div>
                         </div>
                     </div>
-
-                    <!-- Error Message -->
-                    <div id="errorMessage" class="error-message hidden">
-                        <i class="fas fa-exclamation-triangle"></i>
-                        <p id="errorText">Terjadi kesalahan saat menganalisis data.</p>
-                    </div>
-                </div>
-            </div>
-
-            <!-- NDVI Prediction Chart Container -->
-            <div id="prediction-chart-container" class="prediction-chart-container">
-                <div class="prediction-header">
-                    <h3><i class="fas fa-chart-line"></i> Prediksi NDVI (LSTM)</h3>
-                    <div class="prediction-controls">
-                        <div class="control-group">
-                            <label for="predictionDaysChart">Prediksi untuk:</label>
-                            <select id="predictionDaysChart">
-                                <option value="7">7 hari</option>
-                                <option value="14">14 hari</option>
-                                <option value="30" selected>30 hari</option>
-                                <option value="60">60 hari</option>
-                            </select>
-                        </div>
-                        <button id="updatePredictionBtn" class="btn btn-secondary">
-                            <i class="fas fa-sync"></i> Update Prediksi
-                        </button>
-                    </div>
-                </div>
-                
-                <div class="prediction-content">
-                    <div id="prediction-chart" class="chart-container-large">
-                        <!-- Chart akan dirender di sini -->
-                    </div>
-                    
-                    <div class="prediction-summary">
-                        <div class="summary-grid">
-                            <div class="summary-item">
-                                <div class="summary-label">Rata-rata Prediksi</div>
-                                <div id="pred-avg-value" class="summary-value">-</div>
-                            </div>
-                            <div class="summary-item">
-                                <div class="summary-label">Nilai Minimum</div>
-                                <div id="pred-min-value" class="summary-value">-</div>
-                            </div>
-                            <div class="summary-item">
-                                <div class="summary-label">Nilai Maksimum</div>
-                                <div id="pred-max-value" class="summary-value">-</div>
-                            </div>
-                            <div class="summary-item">
-                                <div class="summary-label">Tren Prediksi</div>
-                                <div id="pred-trend-value" class="summary-value">-</div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Critical Areas Detection Container -->
-            <div id="critical-areas-container" class="critical-areas-container">
-                <div class="critical-header">
-                    <h3><i class="fas fa-exclamation-triangle"></i> Hasil Deteksi Area Kritis dengan AI</h3>
-                    <div class="critical-info">
-                        <span class="threshold-info">Threshold NDVI: 0.2 - 0.3 (Area dengan vegetasi rendah)</span>
-                    </div>
-                </div>
-                
-                <div class="critical-content">
-                    <!-- Statistics Overview -->
-                    <div class="critical-stats">
-                        <div class="stat-card">
-                            <div class="stat-label">Total Analisis</div>
-                            <div class="stat-value" id="total-analyzed">-</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Area Kritis</div>
-                            <div class="stat-value" id="critical-count">-</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Persentase</div>
-                            <div class="stat-value" id="critical-percentage">-</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">NDVI Rata-rata</div>
-                            <div class="stat-value" id="avg-ndvi-critical">-</div>
-                        </div>
-                        <div class="stat-card">
-                            <div class="stat-label">Paling Kritis</div>
-                            <div class="stat-value" id="most-critical">-</div>
-                        </div>
-                    </div>
-                    
-                    <!-- Critical Areas List -->
-                    <div class="critical-areas-section">
-                        <h4><i class="fas fa-list"></i> Daftar Area Kritis</h4>
-                        <div id="critical-areas-list" class="critical-areas-list">
-                            <!-- Dynamic content akan diisi oleh JavaScript -->
-                        </div>
-                    </div>
-                    
-                    <!-- AI Recommendations -->
-                    <div class="recommendations-section">
-                        <h4><i class="fas fa-lightbulb"></i> Rekomendasi AI</h4>
-                        <div class="recommendations-content">
-                            <div class="recommendation-group">
-                                <h5>Rekomendasi Umum</h5>
-                                <div id="general-recommendations" class="recommendation-list">
-                                    <!-- Dynamic content -->
-                                </div>
-                            </div>
-                            <div class="recommendation-group">
-                                <h5>Rekomendasi Spesifik</h5>
-                                <div id="specific-recommendations" class="recommendation-list">
-                                    <!-- Dynamic content -->
-                                </div>
-                            </div>
-                        </div>
-                    </div>
-                </div>
-            </div>
-
-            <!-- Info Panel -->
-            <div class="info-panel">
-                <div class="info-section">
-                    <h3><i class="fas fa-info-circle"></i> Tentang Dashboard</h3>
-                    <p>
-                        Green Urban Dashboard menggunakan data satelit Sentinel-2 dari Google Earth Engine 
-                        untuk menganalisis tingkat vegetasi di Kota Semarang hingga level kecamatan. Model AI Random Forest 
-                        mengklasifikasikan area berdasarkan indeks NDVI (Normalized Difference Vegetation Index).
-                    </p>
-                    <p>
-                        Dashboard ini mencakup 16 kecamatan di Kota Semarang dengan total luas 373.70 km². 
-                        Setiap kecamatan dapat dianalisis secara individual untuk mengetahui kondisi vegetasi urbannya.
-                    </p>
-                </div>
-                
-                <div class="info-section">
-                    <h3><i class="fas fa-book"></i> Cara Menggunakan</h3>
-                    <ol>
-                        <li>Pilih kecamatan di Semarang atau masukkan koordinat lokasi yang ingin dianalisis</li>
-                        <li>Klik tombol "Analisis Area" untuk memulai proses</li>
-                        <li>Lihat hasil analisis NDVI dan prediksi AI di panel kanan</li>
-                        <li>Marker pada peta akan menunjukkan lokasi dan klasifikasi vegetasi</li>
-                    </ol>
-                </div>
-                
-                <div class="info-section">
-                    <h3><i class="fas fa-map-marked-alt"></i> Cakupan Wilayah</h3>
-                    <p>
-                        Dashboard ini fokus pada analisis vegetasi di 16 kecamatan Kota Semarang:
-                        Semarang Tengah, Semarang Utara, Semarang Selatan, Semarang Barat, Semarang Timur,
-                        Candisari, Gayamsari, Pedurungan, Genuk, Tembalang, Gunungpati, Mijen, Ngaliyan,
-                        Banyumanik, Tugu, dan Semarang Kota.
-                    </p>
                 </div>
             </div>
         </div>
     </main>
 
+    <!-- Critical Areas Section -->
+    <section id="criticalAreasContainer" class="critical-areas-section hidden">
+        <div class="container">
+            <div class="section-header">
+                <div class="section-icon">
+                    <i class="fas fa-exclamation-triangle"></i>
+                </div>
+                <div class="section-title">
+                    <h2>Area Kritis Terdeteksi</h2>
+                    <p>Analisis AI untuk mendeteksi area dengan vegetasi rendah yang memerlukan perhatian khusus</p>
+                </div>
+            </div>
+            
+            <div id="criticalAreas" class="critical-areas-grid">
+                <!-- Critical areas cards akan ditambahkan secara dinamis -->
+            </div>
+            
+            <div id="criticalAreasStats" class="critical-stats-summary">
+                <!-- Statistics summary akan ditambahkan secara dinamis -->
+            </div>
+        </div>
+    </section>
+
+    <!-- Info Section -->
+    <section class="info-section-container">
+        <div class="container">
+            <div class="info-grid">
+                <!-- Tentang Aplikasi -->
+                <div class="info-card">
+                    <div class="info-header">
+                        <div class="info-icon">
+                            <i class="fas fa-info-circle"></i>
+                        </div>
+                        <h3>Tentang LUNPIA</h3>
+                    </div>
+                    <div class="info-content">
+                        <p>
+                            <strong>LUNPIA (Land Use & Vegetation NDVI Prediction with Intelligent Analytics)</strong> 
+                            adalah platform analisis vegetasi berbasis AI yang menggunakan data satelit Sentinel-2 
+                            dari Google Earth Engine untuk menganalisis tingkat vegetasi di Kota Semarang.
+                        </p>
+                        <p>
+                            Sistem ini menggunakan model AI Random Forest untuk mengklasifikasikan area berdasarkan 
+                            indeks NDVI (Normalized Difference Vegetation Index) dan model LSTM untuk prediksi time series.
+                        </p>
+                        <div class="features-list">
+                            <div class="feature-item-info">
+                                <i class="fas fa-satellite"></i>
+                                <span>Integrasi Google Earth Engine</span>
+                            </div>
+                            <div class="feature-item-info">
+                                <i class="fas fa-brain"></i>
+                                <span>Machine Learning (RF & LSTM)</span>
+                            </div>
+                            <div class="feature-item-info">
+                                <i class="fas fa-chart-line"></i>
+                                <span>Analisis Lanjutan</span>
+                            </div>
+                            <div class="feature-item-info">
+                                <i class="fas fa-map-marked-alt"></i>
+                                <span>Visualisasi Interaktif</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cakupan Wilayah -->
+                <div class="info-card">
+                    <div class="info-header">
+                        <div class="info-icon coverage">
+                            <i class="fas fa-map-marked-alt"></i>
+                        </div>
+                        <h3>Cakupan Wilayah</h3>
+                    </div>
+                    <div class="info-content">
+                        <p>
+                            LUNPIA fokus pada analisis vegetasi di <strong>Kota Semarang</strong> 
+                            dengan total luas 373.70 km². Setiap kecamatan dapat dianalisis secara individual 
+                            untuk mengetahui kondisi vegetasi urbannya.
+                        </p>
+                        <div class="districts-info">
+                            <h4>Kecamatan yang Tercakup:</h4>
+                            <div class="districts-list">
+                                <span class="district-badge">Semarang Tengah</span>
+                                <span class="district-badge">Semarang Utara</span>
+                                <span class="district-badge">Semarang Selatan</span>
+                                <span class="district-badge">Semarang Barat</span>
+                                <span class="district-badge">Semarang Timur</span>
+                                <span class="district-badge">Candisari</span>
+                                <span class="district-badge">Gayamsari</span>
+                                <span class="district-badge">Pedurungan</span>
+                                <span class="district-badge">Genuk</span>
+                                <span class="district-badge">Tembalang</span>
+                                <span class="district-badge">Gunungpati</span>
+                                <span class="district-badge">Mijen</span>
+                                <span class="district-badge">Ngaliyan</span>
+                                <span class="district-badge">Banyumanik</span>
+                                <span class="district-badge">Tugu</span>
+                                <span class="district-badge">Semarang Kota</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Teknologi -->
+                <div class="info-card">
+                    <div class="info-header">
+                        <div class="info-icon tech">
+                            <i class="fas fa-cogs"></i>
+                        </div>
+                        <h3>Teknologi yang Digunakan</h3>
+                    </div>
+                    <div class="info-content">
+                        <div class="tech-stack">
+                            <div class="tech-category">
+                                <h4>Backend & AI</h4>
+                                <div class="tech-items">
+                                    <span class="tech-tag">Python Flask</span>
+                                    <span class="tech-tag">Google Earth Engine</span>
+                                    <span class="tech-tag">Scikit-learn</span>
+                                    <span class="tech-tag">TensorFlow/Keras</span>
+                                    <span class="tech-tag">Random Forest</span>
+                                    <span class="tech-tag">LSTM Neural Network</span>
+                                </div>
+                            </div>
+                            <div class="tech-category">
+                                <h4>Frontend & Visualisasi</h4>
+                                <div class="tech-items">
+                                    <span class="tech-tag">HTML5 & CSS3</span>
+                                    <span class="tech-tag">JavaScript ES6</span>
+                                    <span class="tech-tag">Leaflet.js</span>
+                                    <span class="tech-tag">Plotly.js</span>
+                                    <span class="tech-tag">Responsive Design</span>
+                                </div>
+                            </div>
+                            <div class="tech-category">
+                                <h4>Data & Satelit</h4>
+                                <div class="tech-items">
+                                    <span class="tech-tag">Sentinel-2</span>
+                                    <span class="tech-tag">NDVI Analysis</span>
+                                    <span class="tech-tag">GeoJSON</span>
+                                    <span class="tech-tag">Time Series</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Cara Penggunaan -->
+                <div class="info-card">
+                    <div class="info-header">
+                        <div class="info-icon guide">
+                            <i class="fas fa-book-open"></i>
+                        </div>
+                        <h3>Cara Penggunaan</h3>
+                    </div>
+                    <div class="info-content">
+                        <div class="usage-steps">
+                            <div class="step-item">
+                                <div class="step-number">1</div>
+                                <div class="step-content">
+                                    <h5>Pilih Mode Analisis</h5>
+                                    <p>Pilih antara mode kecamatan atau mode koordinat untuk analisis lokasi</p>
+                                </div>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-number">2</div>
+                                <div class="step-content">
+                                    <h5>Tentukan Lokasi</h5>
+                                    <p>Pilih kecamatan dari daftar atau masukkan koordinat lintang/bujur</p>
+                                </div>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-number">3</div>
+                                <div class="step-content">
+                                    <h5>Mulai Analisis</h5>
+                                    <p>Klik tombol "Analisis Lokasi" atau "Mulai Analisis Kota" untuk memproses</p>
+                                </div>
+                            </div>
+                            <div class="step-item">
+                                <div class="step-number">4</div>
+                                <div class="step-content">
+                                    <h5>Lihat Hasil</h5>
+                                    <p>Analisis NDVI dan prediksi AI akan ditampilkan di panel hasil</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </section>
+
     <!-- Footer -->
     <footer class="footer">
         <div class="container">
-            <p>&copy; 2025 Green Urban Dashboard - Semarang | AI Innovation Challenge</p>
-            <p>Tim: [Nama Tim Anda] | Teknologi: Google Earth Engine, Flask, Leaflet.js, Random Forest</p>
-            <p>Fokus: Analisis Vegetasi 16 Kecamatan Kota Semarang, Jawa Tengah</p>
+            <p>&copy; 2025 LUNPIA - Land Use & Vegetation NDVI Prediction with Intelligent Analytics</p>
+            <p>Teknologi: Google Earth Engine, Python Flask, Leaflet.js, Machine Learning (RF & LSTM)</p>
+            <p>AI Innovation Challenge - Analisis Vegetasi Kota Semarang, Jawa Tengah</p>
         </div>
     </footer>
 
