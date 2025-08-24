@@ -7,7 +7,7 @@ import joblib
 from datetime import timedelta
 import subprocess
 
-MODEL_PATH = "lstm_ndvi_model_2.h5"
+MODEL_PATH = "lstm_ndvi_model_60.h5"
 SCALER_PATH = "scaler.pkl"
 
 app = Flask(__name__)
