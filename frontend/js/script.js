@@ -99,7 +99,32 @@ function resetAllDistrictHighlight() {
     // Hapus layer NDVI
     if (ndviLayer) {
         map.removeLayer(ndviLayer);
+        ndviLayer = null;
     }
+    
+    // Hapus marker koordinat
+    if (currentMarker) {
+        map.removeLayer(currentMarker);
+        currentMarker = null;
+    }
+    
+    // Reset toggle states
+    const ndviToggle = document.getElementById('ndviLayerToggle');
+    if (ndviToggle) {
+        ndviToggle.checked = false;
+    }
+    
+    // Clear critical area markers
+    if (window.criticalAreaMarkers) {
+        window.criticalAreaMarkers.forEach(marker => map.removeLayer(marker));
+        window.criticalAreaMarkers = [];
+    }
+    
+    // Clear coordinate inputs
+    const latInput = document.getElementById('latitude');
+    const lngInput = document.getElementById('longitude');
+    if (latInput) latInput.value = '';
+    if (lngInput) lngInput.value = '';
 }
 
 // Fungsi untuk memuat semua kecamatan Semarang dari API
@@ -300,7 +325,7 @@ function createVegetationIcon(classification) {
 // Fungsi untuk memanggil API backend
 async function callAPI(endpoint, data) {
     try {
-        showLoading(true);
+        showLoading('Memuat data API...');
         
         const response = await fetch(`${API_BASE_URL}${endpoint}`, {
             method: 'POST',
@@ -321,16 +346,21 @@ async function callAPI(endpoint, data) {
         console.error('API Error:', error);
         throw error;
     } finally {
-        showLoading(false);
+        hideLoading();
     }
 }
 
 // Fungsi untuk menganalisis kecamatan dengan border
 async function analyzeDistrict(districtName) {
     try {
-        // Sembunyikan error dan hasil sebelumnya
-        hideError();
+        // Clear previous results first
+        resetAllDistrictHighlight();
         hideResults();
+        hideError();
+        
+        // Show loading with progress
+        showLoading('Memulai analisis kecamatan...');
+        updateProgress(10, `Memulai analisis ${districtName}...`);
 
         // Set selected district untuk prediksi NDVI
         selectedDistrict = districtName;
@@ -338,10 +368,14 @@ async function analyzeDistrict(districtName) {
         // Highlight kecamatan yang dipilih
         highlightSelectedDistrict(districtName);
 
+        updateProgress(25, 'Mengambil data satelit Sentinel-2...');
+
         // Analisis kecamatan dengan API baru
         const result = await callAPI('/api/analyze_district', {
             district_name: districtName
         });
+
+        updateProgress(70, 'Memproses hasil analisis...');
 
         if (!result.success) {
             throw new Error(result.error || 'Gagal menganalisis kecamatan');
@@ -349,24 +383,34 @@ async function analyzeDistrict(districtName) {
 
         const data = result.result;
 
+        updateProgress(80, 'Menampilkan data NDVI...');
         // Tampilkan data NDVI dengan statistik lengkap
         displayNDVIResults(data.ndvi_data);
 
         // Tampilkan hasil prediksi
         displayPredictionResults(data);
 
+        updateProgress(90, 'Memperbarui peta dengan layer NDVI...');
         // Update peta dengan layer NDVI (tanpa mengubah border yang sudah ada)
         await updateMapWithNDVILayer(data);
 
+        updateProgress(95, 'Memulai prediksi NDVI otomatis...');
         // Otomatis jalankan prediksi NDVI
         console.log('Running automatic NDVI prediction...');
         await runNDVIPrediction(districtName);
 
+        updateProgress(100, `Analisis ${districtName} selesai!`);
         console.log('Analisis kecamatan berhasil:', districtName);
+        
+        // Hide loading after completion
+        setTimeout(() => {
+            hideLoading();
+        }, 1000);
 
     } catch (error) {
         console.error('Error during district analysis:', error);
         showError(error.message || 'Terjadi kesalahan saat menganalisis kecamatan');
+        hideLoading();
     }
 }
 
@@ -375,14 +419,18 @@ async function runNDVIPrediction(districtName) {
     try {
         console.log(`Auto-running NDVI prediction for ${districtName}`);
         
-        // Show prediction section
-        document.getElementById('ndviPredictionResults').classList.remove('hidden');
+        // Show specific loading for prediction (don't interfere with main loading)
+        const predictionContainer = document.getElementById('ndviPredictionResults');
+        if (predictionContainer) {
+            predictionContainer.innerHTML = '<div class="loading-text">🔮 Memproses prediksi NDVI...</div>';
+            predictionContainer.classList.remove('hidden');
+        }
         
         // Get prediction days from select (default 30)
         const predictionDays = parseInt(document.getElementById('predictionDays').value) || 30;
         
         // Call prediction API
-        const response = await fetch(`${API_BASE_URL}/api/predict_ndvi`, {
+        let response = await fetch(`${API_BASE_URL}/api/predict_ndvi`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -394,7 +442,21 @@ async function runNDVIPrediction(districtName) {
         });
         
         if (!response.ok) {
-            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            // Try one quick retry with smaller horizon to reduce payload/workload
+            console.warn('Prediction API first attempt failed, retrying with 14 days...');
+            response = await fetch(`${API_BASE_URL}/api/predict_ndvi`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    district_name: districtName,
+                    prediction_days: 14
+                })
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
         }
         
         const data = await response.json();
@@ -416,6 +478,22 @@ async function runNDVIPrediction(districtName) {
         console.error('Error in automatic NDVI prediction:', error);
         // Don't show error to user for auto prediction, just log it
         console.warn('Automatic NDVI prediction failed, but main analysis succeeded');
+        
+        // Show a subtle, non-blocking hint and a manual retry option
+        const predictionContainer = document.getElementById('ndviPredictionResults');
+        if (predictionContainer) {
+            predictionContainer.innerHTML = `
+                <div class="info-text" style="color:#7f8c8d; font-size:0.95rem;">
+                    Prediksi NDVI otomatis belum tersedia saat ini.
+                    <button id="retryPredictBtn" class="btn btn-small" style="margin-left:8px;">
+                        Coba prediksi manual
+                    </button>
+                </div>`;
+            const retryBtn = document.getElementById('retryPredictBtn');
+            if (retryBtn) {
+                retryBtn.addEventListener('click', () => predictNDVI());
+            }
+        }
     }
 }
 
@@ -477,18 +555,23 @@ async function updateMapWithNDVILayer(data) {
 // Fungsi untuk menganalisis seluruh Kota Semarang
 async function analyzeSemarangCity() {
     try {
-        // Sembunyikan error dan hasil sebelumnya
-        hideError();
-        hideResults();
-        showLoading(true, 'Menganalisis seluruh Kota Semarang...');
-
-        // Reset highlight semua kecamatan
+        // Clear previous results first
         resetAllDistrictHighlight();
+        hideResults();
+        hideError();
+        
+        // Show loading with progress
+        showLoading('Memulai analisis Kota Semarang...');
+        updateProgress(10, 'Memulai analisis Kota Semarang...');
+
+        updateProgress(25, 'Mengambil data satelit untuk seluruh Semarang...');
 
         // Panggil API untuk analisis kota
         const result = await callAPI('/api/analyze_city', {
             city_name: 'Semarang'
         });
+
+        updateProgress(60, 'Memproses data agregat kota...');
 
         if (!result.success) {
             throw new Error(result.error || 'Gagal menganalisis kota');
@@ -496,22 +579,29 @@ async function analyzeSemarangCity() {
 
         const data = result.result;
 
+        updateProgress(80, 'Menampilkan hasil analisis kota...');
         // Tampilkan hasil agregat untuk seluruh kota
         displayCityResults(data);
 
+        updateProgress(90, 'Memperbarui layer NDVI kota...');
         // Ambil dan tampilkan layer NDVI untuk seluruh kota
         await updateMapWithCityNDVILayer();
 
         // Zoom out untuk menampilkan seluruh kota
         map.setView([-7.0051, 110.4381], 10);
 
+        updateProgress(100, 'Analisis Kota Semarang selesai!');
         console.log('Analisis kota berhasil:', data);
+        
+        // Hide loading after completion
+        setTimeout(() => {
+            hideLoading();
+        }, 1000);
 
     } catch (error) {
         console.error('Error during city analysis:', error);
         showError(error.message || 'Terjadi kesalahan saat menganalisis kota');
-    } finally {
-        showLoading(false);
+        hideLoading();
     }
 }
 
@@ -650,6 +740,15 @@ function getDistrictCoordinates(districtName) {
 // Fungsi untuk menganalisis area
 async function analyzeArea() {
     try {
+        // Clear previous results first
+        resetAllDistrictHighlight();
+        hideResults();
+        hideError();
+        
+        // Show loading with progress
+        showLoading('Memulai analisis area...');
+        updateProgress(10, 'Memulai analisis area...');
+        
         // Dapatkan koordinat dari input
         const latitude = parseFloat(document.getElementById('latitude').value);
         const longitude = parseFloat(document.getElementById('longitude').value);
@@ -657,18 +756,18 @@ async function analyzeArea() {
         // Validasi input
         if (isNaN(latitude) || isNaN(longitude)) {
             showError('Mohon masukkan koordinat yang valid');
+            hideLoading();
             return;
         }
 
         // Validasi bahwa koordinat berada dalam wilayah Semarang (toleransi lebih luas)
         if (latitude < -7.3 || latitude > -6.7 || longitude < 110.0 || longitude > 110.8) {
             showError('Koordinat berada di luar wilayah Kota Semarang. Silakan pilih lokasi dalam Kota Semarang.');
+            hideLoading();
             return;
         }
 
-        // Sembunyikan error dan hasil sebelumnya
-        hideError();
-        hideResults();
+        updateProgress(30, 'Mengambil data NDVI dari satelit...');
 
         // 1. Ambil data NDVI
         const ndviData = await callAPI('/api/get_ndvi', {
@@ -680,9 +779,11 @@ async function analyzeArea() {
             throw new Error(ndviData.error || 'Gagal mengambil data NDVI');
         }
 
+        updateProgress(50, 'Menampilkan data NDVI...');
         // Tampilkan data NDVI
         displayNDVIResults(ndviData.data);
 
+        updateProgress(70, 'Melakukan prediksi vegetasi...');
         // 2. Prediksi vegetasi
         const predictionData = await callAPI('/api/predict', {
             ndvi_mean: ndviData.data.ndvi_mean,
@@ -696,22 +797,32 @@ async function analyzeArea() {
             throw new Error(predictionData.error || 'Gagal melakukan prediksi');
         }
 
+        updateProgress(90, 'Menampilkan hasil prediksi...');
         // Tampilkan hasil prediksi
         displayPredictionResults(predictionData.result);
 
         // Update peta
         updateMap(latitude, longitude, predictionData.result);
 
+        updateProgress(100, 'Analisis area selesai!');
         console.log('Analisis berhasil completed');
+        
+        // Hide loading after completion
+        setTimeout(() => {
+            hideLoading();
+        }, 1000);
 
     } catch (error) {
         console.error('Error during analysis:', error);
         showError(error.message || 'Terjadi kesalahan saat menganalisis data');
+        hideLoading();
     }
 }
 
 // Fungsi untuk menampilkan hasil NDVI
 function displayNDVIResults(data) {
+    console.log('displayNDVIResults called with data:', data);
+    
     document.getElementById('ndviMean').textContent = data.ndvi_mean.toFixed(3);
     document.getElementById('ndviMin').textContent = data.ndvi_min.toFixed(3);
     document.getElementById('ndviMax').textContent = data.ndvi_max.toFixed(3);
@@ -723,7 +834,14 @@ function displayNDVIResults(data) {
         addAdditionalNDVIStats(data);
     }
     
-    document.getElementById('ndviResults').classList.remove('hidden');
+    const ndviResults = document.getElementById('ndviResults');
+    console.log('ndviResults element found:', ndviResults);
+    if (ndviResults) {
+        ndviResults.classList.remove('hidden');
+        // Ensure display style is cleared
+        ndviResults.style.display = '';
+        console.log('ndviResults should now be visible');
+    }
 }
 
 // Fungsi untuk menambahkan statistik NDVI tambahan
@@ -768,6 +886,8 @@ function addAdditionalNDVIStats(data) {
 
 // Fungsi untuk menampilkan hasil prediksi
 function displayPredictionResults(result) {
+    console.log('displayPredictionResults called with result:', result);
+    
     // Tampilkan klasifikasi utama
     document.getElementById('predictionClass').textContent = result.prediction_label;
     
@@ -778,7 +898,16 @@ function displayPredictionResults(result) {
     updateConfidenceBar('confidenceMedium', 'confidenceMediumText', confidence['Vegetasi Sedang']);
     updateConfidenceBar('confidenceHigh', 'confidenceHighText', confidence['Vegetasi Tinggi']);
     
-    document.getElementById('predictionResults').classList.remove('hidden');
+    const predictionResults = document.getElementById('predictionResults');
+    console.log('predictionResults element found:', predictionResults);
+    if (predictionResults) {
+        predictionResults.classList.remove('hidden');
+        // Ensure display style is cleared
+        predictionResults.style.display = '';
+        console.log('predictionResults should now be visible');
+        // Show download button when results are displayed
+        toggleDownloadButton(true);
+    }
 }
 
 // Fungsi untuk update confidence bar
@@ -816,6 +945,8 @@ function displayCityResults(data) {
             resultsTitle.innerHTML = '<i class="fas fa-city"></i> Hasil Analisis Kota Semarang';
         }
         resultsContainer.classList.remove('hidden');
+        // Ensure display style is cleared
+        resultsContainer.style.display = '';
     }
     
     // Tampilkan statistik agregat kota
@@ -853,7 +984,14 @@ function displayCityNDVIResults(cityNdviData) {
     // Update color coding untuk interpretasi
     updateNDVIInterpretation(cityNdviData.ndvi_mean);
     
-    document.getElementById('ndviResults').classList.remove('hidden');
+    const ndviResults = document.getElementById('ndviResults');
+    if (ndviResults) {
+        ndviResults.classList.remove('hidden');
+        // Ensure display style is cleared
+        ndviResults.style.display = '';
+        // Show download button when results are displayed
+        toggleDownloadButton(true);
+    }
 }
 
 // Fungsi untuk menampilkan hasil prediksi kota
@@ -881,6 +1019,8 @@ function displayCityPredictionResults(data) {
     const predictionResults = document.getElementById('predictionResults');
     if (predictionResults) {
         predictionResults.classList.remove('hidden');
+        // Ensure display style is cleared
+        predictionResults.style.display = '';
     }
 }
 
@@ -1024,30 +1164,112 @@ function updateMap(latitude, longitude, predictionResult) {
 }
 
 // Fungsi untuk menampilkan loading
-function showLoading(show) {
+function showLoading(message) {
     const loading = document.getElementById('loading');
-    if (show) {
+    const loadingText = document.getElementById('loadingText');
+    
+    if (message) {
+        if (loadingText) {
+            loadingText.textContent = message;
+        }
         loading.classList.remove('hidden');
+        // Reset progress bar
+        updateProgress(0);
     } else {
         loading.classList.add('hidden');
     }
 }
 
+// Fungsi untuk menyembunyikan loading
+function hideLoading() {
+    const loading = document.getElementById('loading');
+    loading.classList.add('hidden');
+    // Reset progress
+    updateProgress(0);
+}
+
+// Fungsi untuk update progress bar
+function updateProgress(percentage, message = null) {
+    const progressBar = document.getElementById('loadingProgress');
+    const progressText = document.getElementById('loadingPercentage');
+    const loadingText = document.getElementById('loadingText');
+    
+    if (progressBar) {
+        progressBar.style.width = `${percentage}%`;
+    }
+    
+    if (progressText) {
+        progressText.textContent = `${Math.round(percentage)}%`;
+    }
+    
+    if (message && loadingText) {
+        loadingText.textContent = message;
+    }
+}
+
 // Fungsi untuk menampilkan error
 function showError(message) {
-    document.getElementById('errorText').textContent = message;
-    document.getElementById('errorMessage').classList.remove('hidden');
+    const errorText = document.getElementById('errorText');
+    const errorMessage = document.getElementById('errorMessage');
+    
+    if (errorText) {
+        errorText.textContent = message;
+    }
+    if (errorMessage) {
+        errorMessage.classList.remove('hidden');
+    }
 }
 
 // Fungsi untuk menyembunyikan error
 function hideError() {
-    document.getElementById('errorMessage').classList.add('hidden');
+    const errorMessage = document.getElementById('errorMessage');
+    if (errorMessage) {
+        errorMessage.classList.add('hidden');
+    }
 }
 
 // Fungsi untuk menyembunyikan hasil
 function hideResults() {
-    document.getElementById('ndviResults').classList.add('hidden');
-    document.getElementById('predictionResults').classList.add('hidden');
+    // Hide download button when hiding results
+    toggleDownloadButton(false);
+    
+    // Hide all result sections
+    const resultElements = [
+        'ndviResults',
+        'predictionResults', 
+        'ndviPredictionResults',
+        'prediction-chart-container',
+        'districtSummary',
+        'critical-areas-container'
+    ];
+    
+    resultElements.forEach(elementId => {
+        const element = document.getElementById(elementId);
+        if (element) {
+            element.classList.add('hidden');
+            // Only set display:none for chart container which sometimes needs it
+            if (elementId === 'prediction-chart-container' || elementId === 'critical-areas-container') {
+                element.style.display = 'none';
+            }
+        }
+    });
+    
+    // Clear any dynamic content
+    const predictionContainer = document.getElementById('ndviPredictionResults');
+    if (predictionContainer) {
+        predictionContainer.innerHTML = '';
+    }
+    
+    const chartContainer = document.getElementById('prediction-chart');
+    if (chartContainer) {
+        chartContainer.innerHTML = '';
+    }
+    
+    // Remove district summary if it exists
+    const districtSummary = document.getElementById('districtSummary');
+    if (districtSummary && districtSummary.parentNode) {
+        districtSummary.parentNode.removeChild(districtSummary);
+    }
 }
 
 // Fungsi untuk set koordinat kecamatan
@@ -1084,6 +1306,11 @@ document.addEventListener('DOMContentLoaded', function() {
     // Event listeners untuk toggle mode analisis
     document.querySelectorAll('input[name="analysisMode"]').forEach(radio => {
         radio.addEventListener('change', function() {
+            // Clear previous results when switching modes
+            resetAllDistrictHighlight();
+            hideResults();
+            hideError();
+            
             const coordinateInputs = document.getElementById('coordinateInputs');
             const analyzeBtn = document.getElementById('analyzeBtn');
             
@@ -1107,6 +1334,25 @@ document.addEventListener('DOMContentLoaded', function() {
             }
         }
     });
+    
+    // Event listener untuk tombol Clear Results
+    const clearResultsBtn = document.getElementById('clearResultsBtn');
+    if (clearResultsBtn) {
+        clearResultsBtn.addEventListener('click', function() {
+            resetAllDistrictHighlight();
+            hideResults();
+            hideError();
+            console.log('Results cleared by user');
+        });
+    }
+    
+    // Event listener untuk tombol Download PDF
+    const downloadPdfBtn = document.getElementById('downloadPdfBtn');
+    if (downloadPdfBtn) {
+        downloadPdfBtn.addEventListener('click', function() {
+            downloadAnalysisReport();
+        });
+    }
     
     // Event listeners untuk tombol kecamatan
     document.querySelectorAll('.btn-city').forEach(button => {
@@ -1162,18 +1408,31 @@ async function predictNDVI() {
             return;
         }
         
-        const predictionDays = parseInt(document.getElementById('predictionDays').value);
+        // Safely get prediction days with fallback
+        const predictionDaysInput = document.getElementById('predictionDays');
+        const predictionDays = predictionDaysInput ? parseInt(predictionDaysInput.value) || 30 : 30;
+        
         const predictBtn = document.getElementById('predictNDVIBtn');
         
-        // Disable tombol dan tampilkan loading
-        predictBtn.disabled = true;
-        predictBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memprediksi...';
+        // Show loading with progress
+        showLoading('Memulai prediksi NDVI...');
+        updateProgress(15, 'Memulai prediksi NDVI...');
         
-        // Hide chart dan stats
-        document.getElementById('predictionChart').classList.add('hidden');
-        document.getElementById('predictionStats').classList.add('hidden');
+        // Disable tombol dan tampilkan loading
+        if (predictBtn) {
+            predictBtn.disabled = true;
+            predictBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Memprediksi...';
+        }
+        
+        // Hide chart dan stats (safely)
+        const predictionChart = document.getElementById('predictionChart');
+        const predictionStats = document.getElementById('predictionStats');
+        if (predictionChart) predictionChart.classList.add('hidden');
+        if (predictionStats) predictionStats.classList.add('hidden');
         
         console.log(`Predicting NDVI for ${selectedDistrict} for ${predictionDays} days`);
+        
+        updateProgress(30, `Mengirim request prediksi untuk ${selectedDistrict}...`);
         
         const response = await fetch(`${API_BASE_URL}/api/predict_ndvi`, {
             method: 'POST',
@@ -1186,6 +1445,8 @@ async function predictNDVI() {
             })
         });
         
+        updateProgress(60, 'Memproses model AI untuk prediksi...');
+        
         if (!response.ok) {
             throw new Error(`HTTP ${response.status}: ${response.statusText}`);
         }
@@ -1193,16 +1454,28 @@ async function predictNDVI() {
         const data = await response.json();
         console.log('Response data:', data);
         
+        updateProgress(80, 'Menganalisis hasil prediksi...');
+        
         if (data.success) {
             if (!data.result) {
                 throw new Error('Response tidak mengandung data result');
             }
             
             console.log('Prediction result:', data.result);
+            
+            updateProgress(95, 'Menampilkan chart prediksi...');
             displayNDVIPredictionResults(data.result);
             
             // Show prediksi section
             document.getElementById('ndviPredictionResults').classList.remove('hidden');
+            
+            updateProgress(100, 'Prediksi NDVI selesai!');
+            
+            // Hide loading after showing completion
+            setTimeout(() => {
+                hideLoading();
+            }, 1000);
+            
         } else {
             throw new Error(data.error || 'Gagal melakukan prediksi NDVI');
         }
@@ -1210,11 +1483,14 @@ async function predictNDVI() {
     } catch (error) {
         console.error('Error predicting NDVI:', error);
         showError(`Gagal melakukan prediksi NDVI: ${error.message}`);
+        hideLoading();
     } finally {
-        // Enable tombol kembali
+        // Enable tombol kembali (safely)
         const predictBtn = document.getElementById('predictNDVIBtn');
-        predictBtn.disabled = false;
-        predictBtn.innerHTML = '<i class="fas fa-chart-line"></i> Prediksi NDVI';
+        if (predictBtn) {
+            predictBtn.disabled = false;
+            predictBtn.innerHTML = '<i class="fas fa-chart-line"></i> Prediksi NDVI';
+        }
     }
 }
 
@@ -1410,8 +1686,14 @@ async function detectCriticalAreas() {
     console.log('Starting critical area detection...');
     
     try {
-        // Show loading
-        showLoading('Menganalisis area kritis dengan AI...');
+        // Clear previous results first
+        resetAllDistrictHighlight();
+        hideResults();
+        hideError();
+        
+        // Show loading with progress
+        showLoading('Memulai deteksi area kritis...');
+        updateProgress(10, 'Memulai deteksi area kritis...');
         
         // Get threshold values with fallback
         const thresholdMinInput = document.getElementById('thresholdMin');
@@ -1422,7 +1704,10 @@ async function detectCriticalAreas() {
         
         console.log(`Detecting areas with NDVI ${thresholdMin} - ${thresholdMax}`);
         
-        const response = await fetch('/api/detect_critical_areas', {
+        updateProgress(25, 'Mengirim request ke server...');
+        
+        // Use absolute API base URL to avoid wrong origin (which may return 405)
+        const response = await fetch(`${API_BASE_URL}/api/detect_critical_areas`, {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json'
@@ -1433,12 +1718,42 @@ async function detectCriticalAreas() {
             })
         });
         
+        updateProgress(50, 'Memproses response dari server...');
+        
+        console.log('Response status:', response.status);
+        console.log('Response headers:', response.headers);
+        
+        if (!response.ok) {
+            const errorText = await response.text();
+            console.error('HTTP error response:', errorText);
+            throw new Error(`HTTP ${response.status}: ${errorText}`);
+        }
+        
+        const contentType = response.headers.get('content-type');
+        if (!contentType || !contentType.includes('application/json')) {
+            const responseText = await response.text();
+            console.error('Non-JSON response:', responseText);
+            throw new Error(`Expected JSON response, got: ${contentType}. Response: ${responseText.substring(0, 200)}...`);
+        }
+        
+        updateProgress(75, 'Memparse data hasil analisis...');
+        
         const data = await response.json();
         console.log('Critical area detection response:', data);
         
         if (data.success) {
+            updateProgress(90, 'Menampilkan hasil deteksi...');
             displayCriticalAreas(data);
             showCriticalAreasOnMap(data.critical_areas);
+            
+            updateProgress(100, 'Deteksi area kritis selesai!');
+            
+            // Hide loading after a short delay to show completion
+            setTimeout(() => {
+                hideLoading();
+            }, 1000);
+            
+            console.log('Critical areas detection completed successfully');
         } else {
             throw new Error(data.error || 'Gagal mendeteksi area kritis');
         }
@@ -1447,7 +1762,11 @@ async function detectCriticalAreas() {
         console.error('Error detecting critical areas:', error);
         showError('Gagal mendeteksi area kritis: ' + error.message);
     } finally {
-        hideLoading();
+        // Pastikan loading selalu di-hide setelah detection selesai
+        console.log('Ensuring loading is hidden after critical area detection');
+        setTimeout(() => {
+            hideLoading();
+        }, 1500);
     }
 }
 
@@ -1460,10 +1779,13 @@ function displayCriticalAreas(data) {
     console.log('Critical container element:', criticalContainer);
     
     if (criticalContainer) {
-        criticalContainer.style.display = 'block';
         criticalContainer.classList.remove('hidden');
+        criticalContainer.style.display = 'block';
         console.log('Critical container shown, display style:', criticalContainer.style.display);
         console.log('Critical container classes:', criticalContainer.className);
+        
+        // Show download button when critical areas are displayed
+        toggleDownloadButton(true);
         
         // Scroll to container
         criticalContainer.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -1680,3 +2002,291 @@ document.addEventListener('DOMContentLoaded', function() {
         console.error('Critical detection button not found!');
     }
 });
+
+// ==================== DOWNLOAD PDF REPORT ====================
+
+function downloadAnalysisReport() {
+    console.log('Starting PDF download...');
+    
+    try {
+        // Cek apakah jsPDF tersedia - multiple methods
+        let jsPDF;
+        
+        if (typeof window.jsPDF !== 'undefined') {
+            jsPDF = window.jsPDF.jsPDF;
+        } else if (typeof window.jspdf !== 'undefined') {
+            jsPDF = window.jspdf.jsPDF;
+        } else if (typeof jspdf !== 'undefined') {
+            jsPDF = jspdf.jsPDF;
+        } else {
+            console.error('jsPDF not found, trying alternative download method');
+            downloadAlternativeReport();
+            return;
+        }
+        
+        if (!jsPDF) {
+            console.error('jsPDF constructor not found, trying alternative method');
+            downloadAlternativeReport();
+            return;
+        }
+        
+        const doc = new jsPDF();
+        
+        // Header
+        doc.setFontSize(20);
+        doc.setTextColor(40, 40, 40);
+        doc.text('Green Urban Dashboard', 20, 30);
+        doc.setFontSize(14);
+        doc.text('Laporan Analisis Vegetasi Kota Semarang', 20, 40);
+        
+        // Tanggal dan waktu
+        const now = new Date();
+        const dateString = now.toLocaleDateString('id-ID', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        doc.setFontSize(10);
+        doc.text(`Tanggal: ${dateString}`, 20, 50);
+        
+        let yPosition = 70;
+        
+        // Cek data NDVI yang tersedia
+        const ndviResults = document.getElementById('ndviResults');
+        if (ndviResults && !ndviResults.classList.contains('hidden')) {
+            doc.setFontSize(16);
+            doc.setTextColor(0, 100, 0);
+            doc.text('Data NDVI (Sentinel-2)', 20, yPosition);
+            yPosition += 15;
+            
+            // Ambil data NDVI
+            const ndviMean = document.getElementById('ndviMean')?.textContent || '-';
+            const ndviMin = document.getElementById('ndviMin')?.textContent || '-';
+            const ndviMax = document.getElementById('ndviMax')?.textContent || '-';
+            const dataDate = document.getElementById('dataDate')?.textContent || '-';
+            
+            doc.setFontSize(11);
+            doc.setTextColor(40, 40, 40);
+            doc.text(`NDVI Rata-rata: ${ndviMean}`, 20, yPosition);
+            yPosition += 8;
+            doc.text(`NDVI Minimum: ${ndviMin}`, 20, yPosition);
+            yPosition += 8;
+            doc.text(`NDVI Maksimum: ${ndviMax}`, 20, yPosition);
+            yPosition += 8;
+            doc.text(`Tanggal Data: ${dataDate}`, 20, yPosition);
+            yPosition += 20;
+        }
+        
+        // Cek data prediksi yang tersedia
+        const predictionResults = document.getElementById('predictionResults');
+        if (predictionResults && !predictionResults.classList.contains('hidden')) {
+            doc.setFontSize(16);
+            doc.setTextColor(0, 0, 150);
+            doc.text('Prediksi AI', 20, yPosition);
+            yPosition += 15;
+            
+            // Ambil data prediksi
+            const predictionClass = document.getElementById('predictionClass')?.textContent || '-';
+            const confidenceLow = document.getElementById('confidenceLowText')?.textContent || '-';
+            const confidenceMedium = document.getElementById('confidenceMediumText')?.textContent || '-';
+            const confidenceHigh = document.getElementById('confidenceHighText')?.textContent || '-';
+            
+            doc.setFontSize(11);
+            doc.setTextColor(40, 40, 40);
+            doc.text(`Klasifikasi: ${predictionClass}`, 20, yPosition);
+            yPosition += 8;
+            doc.text(`Vegetasi Rendah: ${confidenceLow}`, 20, yPosition);
+            yPosition += 8;
+            doc.text(`Vegetasi Sedang: ${confidenceMedium}`, 20, yPosition);
+            yPosition += 8;
+            doc.text(`Vegetasi Tinggi: ${confidenceHigh}`, 20, yPosition);
+            yPosition += 20;
+        }
+        
+        // Cek data area kritis
+        const criticalContainer = document.getElementById('critical-areas-container');
+        if (criticalContainer && !criticalContainer.classList.contains('hidden')) {
+            doc.setFontSize(16);
+            doc.setTextColor(150, 0, 0);
+            doc.text('Area Kritis Terdeteksi', 20, yPosition);
+            yPosition += 15;
+            
+            // Ambil data area kritis jika ada
+            const criticalSummary = criticalContainer.querySelector('.critical-summary');
+            if (criticalSummary) {
+                const summaryText = criticalSummary.textContent || 'Data area kritis tersedia';
+                doc.setFontSize(11);
+                doc.setTextColor(40, 40, 40);
+                
+                // Split teks jika terlalu panjang
+                const lines = doc.splitTextToSize(summaryText, 170);
+                lines.forEach(line => {
+                    doc.text(line, 20, yPosition);
+                    yPosition += 8;
+                });
+                yPosition += 10;
+            }
+        }
+        
+        // Footer
+        yPosition = 270;
+        doc.setFontSize(8);
+        doc.setTextColor(100, 100, 100);
+        doc.text('Generated by Green Urban Dashboard - AI Innovation Challenge 2025', 20, yPosition);
+        doc.text('Tim: [Nama Tim] | Teknologi: Google Earth Engine, Flask, Random Forest', 20, yPosition + 5);
+        
+        // Buat nama file dengan timestamp
+        const filename = `Analisis_Vegetasi_Semarang_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}.pdf`;
+        
+        // Download PDF
+        doc.save(filename);
+        
+        console.log('PDF downloaded successfully:', filename);
+        
+    } catch (error) {
+        console.error('Error generating PDF:', error);
+        showError('Terjadi kesalahan saat membuat PDF. Silakan coba lagi.');
+    }
+}
+
+// Fungsi alternatif untuk download tanpa jsPDF
+function downloadAlternativeReport() {
+    console.log('Using alternative download method...');
+    
+    try {
+        // Kumpulkan data hasil analisis
+        let reportData = [];
+        reportData.push('GREEN URBAN DASHBOARD - LAPORAN ANALISIS VEGETASI');
+        reportData.push('Kota Semarang, Jawa Tengah');
+        reportData.push('='.repeat(60));
+        
+        // Tambahkan timestamp
+        const now = new Date();
+        const dateString = now.toLocaleDateString('id-ID', {
+            year: 'numeric',
+            month: 'long',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+        reportData.push(`Tanggal Generate: ${dateString}`);
+        reportData.push('');
+        
+        // Cek dan tambahkan data NDVI
+        const ndviResults = document.getElementById('ndviResults');
+        if (ndviResults && !ndviResults.classList.contains('hidden')) {
+            reportData.push('DATA NDVI (SENTINEL-2):');
+            reportData.push('-'.repeat(30));
+            
+            const ndviMean = document.getElementById('ndviMean')?.textContent || '-';
+            const ndviMin = document.getElementById('ndviMin')?.textContent || '-';
+            const ndviMax = document.getElementById('ndviMax')?.textContent || '-';
+            const dataDate = document.getElementById('dataDate')?.textContent || '-';
+            
+            reportData.push(`NDVI Rata-rata: ${ndviMean}`);
+            reportData.push(`NDVI Minimum: ${ndviMin}`);
+            reportData.push(`NDVI Maksimum: ${ndviMax}`);
+            reportData.push(`Tanggal Data: ${dataDate}`);
+            reportData.push('');
+        }
+        
+        // Cek dan tambahkan data prediksi
+        const predictionResults = document.getElementById('predictionResults');
+        if (predictionResults && !predictionResults.classList.contains('hidden')) {
+            reportData.push('PREDIKSI AI:');
+            reportData.push('-'.repeat(30));
+            
+            const predictionClass = document.getElementById('predictionClass')?.textContent || '-';
+            const confidenceLow = document.getElementById('confidenceLowText')?.textContent || '-';
+            const confidenceMedium = document.getElementById('confidenceMediumText')?.textContent || '-';
+            const confidenceHigh = document.getElementById('confidenceHighText')?.textContent || '-';
+            
+            reportData.push(`Klasifikasi: ${predictionClass}`);
+            reportData.push(`Confidence Vegetasi Rendah: ${confidenceLow}`);
+            reportData.push(`Confidence Vegetasi Sedang: ${confidenceMedium}`);
+            reportData.push(`Confidence Vegetasi Tinggi: ${confidenceHigh}`);
+            reportData.push('');
+        }
+        
+        // Cek dan tambahkan data area kritis
+        const criticalContainer = document.getElementById('critical-areas-container');
+        if (criticalContainer && !criticalContainer.classList.contains('hidden')) {
+            reportData.push('AREA KRITIS TERDETEKSI:');
+            reportData.push('-'.repeat(30));
+            
+            const criticalSummary = criticalContainer.querySelector('.critical-summary');
+            if (criticalSummary) {
+                reportData.push(criticalSummary.textContent || 'Data area kritis tersedia');
+            } else {
+                reportData.push('Area kritis telah diidentifikasi. Lihat peta untuk detail lokasi.');
+            }
+            reportData.push('');
+        }
+        
+        // Footer
+        reportData.push('='.repeat(60));
+        reportData.push('Generated by Green Urban Dashboard');
+        reportData.push('AI Innovation Challenge 2025');
+        reportData.push('Tim: [Nama Tim] | Teknologi: Google Earth Engine, Flask, Random Forest');
+        
+        // Buat file text
+        const content = reportData.join('\n');
+        const blob = new Blob([content], { type: 'text/plain;charset=utf-8' });
+        
+        // Buat nama file dengan timestamp
+        const filename = `Analisis_Vegetasi_Semarang_${now.getFullYear()}${(now.getMonth()+1).toString().padStart(2,'0')}${now.getDate().toString().padStart(2,'0')}_${now.getHours().toString().padStart(2,'0')}${now.getMinutes().toString().padStart(2,'0')}.txt`;
+        
+        // Download file
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+        
+        console.log('Alternative report downloaded successfully:', filename);
+        
+        // Show success message
+        const successMsg = document.createElement('div');
+        successMsg.style.cssText = `
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            background: #27ae60;
+            color: white;
+            padding: 15px 20px;
+            border-radius: 8px;
+            z-index: 10000;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        `;
+        successMsg.innerHTML = `
+            <i class="fas fa-check-circle"></i> 
+            Laporan berhasil didownload sebagai file TXT!
+        `;
+        document.body.appendChild(successMsg);
+        
+        setTimeout(() => {
+            document.body.removeChild(successMsg);
+        }, 3000);
+        
+    } catch (error) {
+        console.error('Error in alternative download:', error);
+        showError('Terjadi kesalahan saat membuat laporan. Silakan coba lagi.');
+    }
+}
+
+// Fungsi untuk menampilkan/menyembunyikan tombol download
+function toggleDownloadButton(show = true) {
+    const downloadBtn = document.getElementById('downloadPdfBtn');
+    if (downloadBtn) {
+        if (show) {
+            downloadBtn.classList.remove('hidden');
+        } else {
+            downloadBtn.classList.add('hidden');
+        }
+    }
+}

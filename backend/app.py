@@ -44,6 +44,8 @@ initialize_gee()
 def get_district_geometry(district_name):
     """Mengambil geometri kecamatan dari asset GCP"""
     try:
+        print(f"Fetching geometry for {district_name} from GCP asset...")
+        
         # Load asset kecamatan Indonesia dari GCP
         districts = ee.FeatureCollection('projects/projectaic-468717/assets/indonesia_kecamatan')
         
@@ -54,15 +56,32 @@ def get_district_geometry(district_name):
         ))
         
         # Cek apakah ada hasil
-        size = filtered_districts.size()
-        if size.getInfo() == 0:
-            print(f"Kecamatan '{district_name}' tidak ditemukan di Kota Semarang")
+        size = filtered_districts.size().getInfo()
+        print(f"Found {size} matching districts for '{district_name}' in Kota Semarang")
+        
+        if size == 0:
+            print(f"❌ Kecamatan '{district_name}' tidak ditemukan di Kota Semarang")
             return None
             
         district = filtered_districts.first()
+        print(f"✅ Successfully retrieved geometry for {district_name}")
         return district
+        
     except Exception as e:
-        print(f"Error getting district geometry: {e}")
+        print(f"❌ Error getting district geometry for {district_name}: {e}")
+        return None
+
+def get_district_centroid_from_geometry(district_geom):
+    """Mendapatkan koordinat centroid dari geometri kecamatan"""
+    try:
+        if district_geom:
+            centroid = district_geom.geometry().centroid()
+            coords = centroid.coordinates().getInfo()
+            # coords adalah [longitude, latitude]
+            return [coords[1], coords[0]]  # Return sebagai [latitude, longitude]
+        return None
+    except Exception as e:
+        print(f"Error getting centroid: {e}")
         return None
 
 def get_all_semarang_districts():
@@ -503,6 +522,10 @@ def predict_vegetation():
             'latitude': [float(data['latitude'])]
         })
         
+        # Pastikan kolom dalam urutan yang benar sesuai training
+        feature_order = ['ndvi_mean', 'ndvi_min', 'ndvi_max', 'longitude', 'latitude']
+        prediction_data = prediction_data[feature_order]
+        
         # Prediksi
         if rf_model is None:
             return jsonify({'error': 'Model not available'}), 500
@@ -632,14 +655,18 @@ def analyze_district():
         print(f"Using coordinates {coords} for: {district_name}")
         
         # Siapkan data untuk prediksi dengan nama fitur yang sama seperti training
-        # Urutan fitur harus sama dengan training: ['ndvi_mean', 'ndvi_min', 'ndvi_max', 'latitude', 'longitude']
+        # Urutan fitur harus sama dengan training: ['ndvi_mean', 'ndvi_min', 'ndvi_max', 'longitude', 'latitude']
         prediction_data = pd.DataFrame({
             'ndvi_mean': [ndvi_data['ndvi_mean']],
             'ndvi_min': [ndvi_data['ndvi_min']],
             'ndvi_max': [ndvi_data['ndvi_max']],
-            'latitude': [coords[0]],
-            'longitude': [coords[1]]
+            'longitude': [coords[1]],
+            'latitude': [coords[0]]
         })
+        
+        # Pastikan kolom dalam urutan yang benar sesuai training
+        feature_order = ['ndvi_mean', 'ndvi_min', 'ndvi_max', 'longitude', 'latitude']
+        prediction_data = prediction_data[feature_order]
         
         print(f"Prepared prediction data for: {district_name}")
         
@@ -754,9 +781,13 @@ def analyze_city():
                     'ndvi_mean': [ndvi_data['ndvi_mean']],
                     'ndvi_min': [ndvi_data['ndvi_min']],
                     'ndvi_max': [ndvi_data['ndvi_max']],
-                    'latitude': [coords[0]],
-                    'longitude': [coords[1]]
+                    'longitude': [coords[1]],
+                    'latitude': [coords[0]]
                 })
+                
+                # Pastikan kolom dalam urutan yang benar sesuai training
+                feature_order = ['ndvi_mean', 'ndvi_min', 'ndvi_max', 'longitude', 'latitude']
+                prediction_data = prediction_data[feature_order]
                 
                 prediction = model.predict(prediction_data)[0]
                 prediction_proba = model.predict_proba(prediction_data)[0]
@@ -995,6 +1026,38 @@ def get_semarang_districts():
             'error': str(e)
         }), 500
 
+def get_semarang_districts_data():
+    """Get districts data as raw list (not JSON response)"""
+    try:
+        districts = get_all_semarang_districts()
+        
+        if not districts:
+            # Fallback data jika GEE tidak tersedia
+            districts = [
+                {'name': 'Semarang Tengah', 'geometry': None, 'properties': {'NAME_3': 'Semarang Tengah'}},
+                {'name': 'Semarang Utara', 'geometry': None, 'properties': {'NAME_3': 'Semarang Utara'}},
+                {'name': 'Semarang Selatan', 'geometry': None, 'properties': {'NAME_3': 'Semarang Selatan'}},
+                {'name': 'Semarang Barat', 'geometry': None, 'properties': {'NAME_3': 'Semarang Barat'}},
+                {'name': 'Semarang Timur', 'geometry': None, 'properties': {'NAME_3': 'Semarang Timur'}},
+                {'name': 'Candisari', 'geometry': None, 'properties': {'NAME_3': 'Candisari'}},
+                {'name': 'Gayamsari', 'geometry': None, 'properties': {'NAME_3': 'Gayamsari'}},
+                {'name': 'Pedurungan', 'geometry': None, 'properties': {'NAME_3': 'Pedurungan'}},
+                {'name': 'Genuk', 'geometry': None, 'properties': {'NAME_3': 'Genuk'}},
+                {'name': 'Tembalang', 'geometry': None, 'properties': {'NAME_3': 'Tembalang'}},
+                {'name': 'Gunungpati', 'geometry': None, 'properties': {'NAME_3': 'Gunungpati'}},
+                {'name': 'Mijen', 'geometry': None, 'properties': {'NAME_3': 'Mijen'}},
+                {'name': 'Ngaliyan', 'geometry': None, 'properties': {'NAME_3': 'Ngaliyan'}},
+                {'name': 'Banyumanik', 'geometry': None, 'properties': {'NAME_3': 'Banyumanik'}},
+                {'name': 'Tugu', 'geometry': None, 'properties': {'NAME_3': 'Tugu'}},
+                {'name': 'Gajahmungkur', 'geometry': None, 'properties': {'NAME_3': 'Gajahmungkur'}}
+            ]
+        
+        return districts
+        
+    except Exception as e:
+        print(f"Error getting districts data: {e}")
+        return None
+
 @app.route('/api/get_ndvi_layer', methods=['POST'])
 def get_ndvi_layer():
     """Endpoint untuk mendapatkan layer NDVI sebagai tile"""
@@ -1224,7 +1287,7 @@ def get_historical_ndvi_data(district_name, days=90):
         print(f"Mengambil data historis NDVI untuk {district_name} dari GEE...")
         
         # Periode data historis tetap: 6 Maret 2018 hingga 28 Mei 2025
-        start_date = '2018-03-06'
+        start_date = '2024-03-06'
         end_date = '2025-05-28'
         
         print(f"Periode data: {start_date} sampai {end_date}")
@@ -1665,11 +1728,107 @@ def predict_ndvi():
         })
         
     except Exception as e:
-        print(f"Error in NDVI prediction: {e}")
-        return jsonify({
-            'success': False,
-            'error': str(e)
-        }), 500
+        # Robust fallback so UI still gets predictions
+        try:
+            print(f"Error in NDVI prediction: {e}")
+            import traceback
+            traceback.print_exc()
+
+            # Try to parse basic request data again (safe defaults)
+            data = request.get_json(silent=True) or {}
+            district_name = data.get('district_name', 'Semarang Tengah')
+            prediction_days = int(data.get('prediction_days', 30))
+
+            # Generate lightweight fallback predictions (no GEE/LSTM)
+            district_seed = hash(district_name) % 1000
+            np.random.seed(district_seed)
+
+            # Base and amplitude tuned by district type
+            urban_districts = ['Semarang Tengah', 'Semarang Utara', 'Candisari', 'Semarang Timur']
+            suburban_districts = ['Tembalang', 'Banyumanik', 'Gunungpati', 'Mijen']
+
+            if district_name in urban_districts:
+                base = 0.38
+                amplitude = 0.05
+                drift = 0.0003
+            elif district_name in suburban_districts:
+                base = 0.50
+                amplitude = 0.08
+                drift = 0.0005
+            else:
+                base = 0.45
+                amplitude = 0.06
+                drift = 0.0004
+
+            # Create fallback prediction series
+            predictions_arr = []
+            for i in range(prediction_days):
+                seasonal = amplitude * np.sin(2 * np.pi * i / 30.0)
+                noise = np.random.normal(0, 0.01)
+                val = base + seasonal + drift * i + noise
+                predictions_arr.append(float(max(0.0, min(1.0, val))))
+
+            # Dates for predictions (start 29 May 2025 as in main flow)
+            prediction_start_date = datetime(2025, 5, 29)
+            dates = [(prediction_start_date + timedelta(days=i)).strftime('%Y-%m-%d') for i in range(prediction_days)]
+
+            # Minimal historical context (last 30 days before 28 May 2025)
+            historical_end_date = datetime(2025, 5, 28)
+            historical_dates = [(historical_end_date - timedelta(days=29-i)).strftime('%Y-%m-%d') for i in range(30)]
+            historical_values = []
+            for i in range(30):
+                seasonal = amplitude * np.sin(2 * np.pi * (i - 30) / 30.0)
+                noise = np.random.normal(0, 0.01)
+                val = base + seasonal + drift * (i - 30) + noise
+                historical_values.append(float(max(0.0, min(1.0, val))))
+
+            # Build plot JSON safely
+            try:
+                fig = go.Figure()
+                fig.add_trace(go.Scatter(x=historical_dates, y=historical_values, mode='lines+markers', name='Data Historis'))
+                fig.add_trace(go.Scatter(x=dates, y=predictions_arr, mode='lines+markers', name='Prediksi (Fallback)', line=dict(dash='dash')))
+                fig.update_layout(title=f'Prediksi NDVI (Fallback) untuk {district_name}', template='plotly_white', height=400)
+                plot_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
+            except Exception:
+                plot_json = create_simple_plot_json(predictions_arr, dates, historical_values, historical_dates, district_name)
+
+            # Stats
+            avg_pred = float(np.mean(predictions_arr)) if predictions_arr else 0.5
+            min_pred = float(np.min(predictions_arr)) if predictions_arr else 0.0
+            max_pred = float(np.max(predictions_arr)) if predictions_arr else 1.0
+
+            result = {
+                'district_name': district_name,
+                'predictions': predictions_arr,
+                'dates': dates,
+                'prediction_days': prediction_days,
+                'plot_json': plot_json,
+                'statistics': {
+                    'avg_prediction': avg_pred,
+                    'min_prediction': min_pred,
+                    'max_prediction': max_pred,
+                    'trend': 'stabil',
+                    'confidence': 'low'
+                },
+                'historical_context': {
+                    'dates': historical_dates,
+                    'values': historical_values
+                },
+                'fallback': True,
+                'error_message': str(e)
+            }
+
+            return jsonify({
+                'success': True,
+                'result': result
+            })
+
+        except Exception as inner_e:
+            print(f"Fallback NDVI prediction also failed: {inner_e}")
+            return jsonify({
+                'success': False,
+                'error': str(e)
+            }), 500
 
 @app.route('/api/detect_critical_areas', methods=['POST'])
 def detect_critical_areas():
@@ -1678,14 +1837,37 @@ def detect_critical_areas():
     menggunakan AI dan analisis spasial
     """
     try:
+        print("=== STARTING CRITICAL AREA DETECTION ===")
+        
+        # Cek apakah request memiliki JSON data
+        if not request.is_json:
+            print("ERROR: Request is not JSON")
+            return jsonify({
+                'success': False,
+                'error': 'Request must be JSON'
+            }), 400
+        
         data = request.get_json()
+        if data is None:
+            print("ERROR: No JSON data received")
+            return jsonify({
+                'success': False,
+                'error': 'No JSON data received'
+            }), 400
+        
         threshold_min = data.get('threshold_min', 0.2)  # NDVI minimum untuk area kritis
         threshold_max = data.get('threshold_max', 0.3)  # NDVI maksimum untuk area kritis
         
         print(f"Detecting critical areas with NDVI {threshold_min} - {threshold_max}")
         
         # Dapatkan semua kecamatan di Semarang
-        districts = get_semarang_districts()
+        print("Getting Semarang districts...")
+        try:
+            districts = get_semarang_districts_data()
+            print(f"Districts retrieved: {type(districts)}")
+        except Exception as e:
+            print(f"Error getting districts: {e}")
+            districts = None
         
         if not districts:
             print("Using fallback district list")
@@ -1695,6 +1877,12 @@ def detect_critical_areas():
                 'Pedurungan', 'Genuk', 'Tembalang', 'Gunungpati', 'Mijen',
                 'Ngaliyan', 'Banyumanik', 'Tugu', 'Gajahmungkur'
             ]
+        
+        # Convert districts to list of names if it's a different format
+        if isinstance(districts, list) and len(districts) > 0:
+            if isinstance(districts[0], dict):
+                districts = [d.get('name', d.get('properties', {}).get('NAME_3', '')) for d in districts]
+            print(f"Final districts list: {districts}")
         
         critical_areas = []
         total_analyzed = 0
@@ -1721,25 +1909,54 @@ def detect_critical_areas():
                 continue
         
         # AI-based risk assessment dan prioritas
-        if critical_areas:
-            critical_areas = apply_ai_risk_assessment(critical_areas)
-            critical_areas = sorted(critical_areas, key=lambda x: x['risk_score'], reverse=True)
+        print(f"Applying AI risk assessment to {len(critical_areas)} critical areas...")
+        try:
+            if critical_areas:
+                critical_areas = apply_ai_risk_assessment(critical_areas)
+                critical_areas = sorted(critical_areas, key=lambda x: x.get('risk_score', 0), reverse=True)
+        except Exception as e:
+            print(f"Error in AI risk assessment: {e}")
+            # Continue without risk assessment
         
         # Generate rekomendasi menggunakan AI
-        recommendations = generate_ai_recommendations(critical_areas, threshold_min, threshold_max)
+        print("Generating AI recommendations...")
+        try:
+            recommendations = generate_ai_recommendations(critical_areas, threshold_min, threshold_max)
+        except Exception as e:
+            print(f"Error generating recommendations: {e}")
+            recommendations = {
+                'general': ['Error generating recommendations'],
+                'specific': []
+            }
         
         # Statistik summary
-        stats = {
-            'total_districts_analyzed': total_analyzed,
-            'critical_areas_found': len(critical_areas),
-            'percentage_critical': (len(critical_areas) / total_analyzed * 100) if total_analyzed > 0 else 0,
-            'avg_ndvi_critical': np.mean([area['avg_ndvi'] for area in critical_areas]) if critical_areas else 0,
-            'most_critical_district': critical_areas[0]['district_name'] if critical_areas else None
-        }
+        try:
+            avg_ndvi = 0
+            if critical_areas:
+                ndvi_values = [area.get('avg_ndvi', 0) for area in critical_areas if isinstance(area, dict)]
+                if ndvi_values:
+                    avg_ndvi = float(np.mean(ndvi_values))
+            
+            stats = {
+                'total_districts_analyzed': total_analyzed,
+                'critical_areas_found': len(critical_areas),
+                'percentage_critical': (len(critical_areas) / total_analyzed * 100) if total_analyzed > 0 else 0,
+                'avg_ndvi_critical': avg_ndvi,
+                'most_critical_district': critical_areas[0]['district_name'] if critical_areas and len(critical_areas) > 0 else None
+            }
+        except Exception as e:
+            print(f"Error calculating statistics: {e}")
+            stats = {
+                'total_districts_analyzed': total_analyzed,
+                'critical_areas_found': len(critical_areas) if critical_areas else 0,
+                'percentage_critical': 0,
+                'avg_ndvi_critical': 0,
+                'most_critical_district': None
+            }
         
         print(f"Critical area detection completed: {len(critical_areas)} areas found")
         
-        return jsonify({
+        result = {
             'success': True,
             'critical_areas': critical_areas,
             'recommendations': recommendations,
@@ -1748,35 +1965,62 @@ def detect_critical_areas():
                 'min': threshold_min,
                 'max': threshold_max
             }
-        })
+        }
+        
+        print("=== CRITICAL AREA DETECTION SUCCESS ===")
+        return jsonify(result)
         
     except Exception as e:
-        print(f"Error in critical area detection: {e}")
+        print(f"=== ERROR IN CRITICAL AREA DETECTION ===")
+        print(f"Error type: {type(e).__name__}")
+        print(f"Error message: {str(e)}")
+        import traceback
+        print(f"Traceback: {traceback.format_exc()}")
+        
         return jsonify({
             'success': False,
-            'error': str(e)
+            'error': f"Internal server error: {str(e)}"
         }), 500
 
 def analyze_district_ndvi_for_critical_areas(district_name, threshold_min, threshold_max):
     """
     Analisis NDVI untuk satu kecamatan untuk mendeteksi area kritis
+    Menggunakan geometri akurat dari asset GCP
     """
     try:
-        # Dapatkan geometri kecamatan
+        print(f"Analyzing {district_name} using GCP asset geometry...")
+        
+        # Dapatkan geometri kecamatan dari asset GCP
         district_geom = get_district_geometry(district_name)
-        if not district_geom:
-            # Gunakan koordinat default
+        
+        if district_geom:
+            print(f"✅ Found GCP geometry for {district_name}")
+            geometry = district_geom.geometry()
+            
+            # Dapatkan bounding box untuk info
+            try:
+                bounds = geometry.bounds().getInfo()
+                print(f"District bounds: {bounds}")
+            except:
+                print("Could not get bounds info")
+                
+        else:
+            print(f"⚠️ No GCP geometry found for {district_name}, using fallback coordinates")
+            # Gunakan koordinat default sebagai fallback
             district_coords = get_default_district_coordinates(district_name)
             if not district_coords:
+                print(f"❌ No fallback coordinates for {district_name}")
                 return None
             
+            # Buat buffer dari titik koordinat (1km radius)
             geometry = ee.Geometry.Point([district_coords[1], district_coords[0]]).buffer(1000)
-        else:
-            geometry = district_geom.geometry()
+            print(f"Using point buffer for {district_name}: [{district_coords[1]}, {district_coords[0]}]")
         
         # Ambil data Sentinel-2 terbaru (6 bulan terakhir)
         end_date = '2025-05-28'
         start_date = '2024-11-28'  # 6 bulan sebelumnya
+        
+        print(f"Fetching Sentinel-2 data for {district_name} ({start_date} to {end_date})...")
         
         # Load Sentinel-2 collection
         collection = ee.ImageCollection('COPERNICUS/S2_HARMONIZED') \
@@ -1784,7 +2028,10 @@ def analyze_district_ndvi_for_critical_areas(district_name, threshold_min, thres
             .filterBounds(geometry) \
             .filter(ee.Filter.lt('CLOUDY_PIXEL_PERCENTAGE', 20))
         
-        if collection.size().getInfo() == 0:
+        collection_size = collection.size().getInfo()
+        print(f"Found {collection_size} Sentinel-2 images for {district_name}")
+        
+        if collection_size == 0:
             print(f"No Sentinel-2 data available for {district_name}, using simulation")
             return create_simulated_critical_analysis(district_name, threshold_min, threshold_max)
         
@@ -1857,9 +2104,11 @@ def analyze_district_ndvi_for_critical_areas(district_name, threshold_min, thres
             'std_ndvi': float(std_ndvi),
             'is_critical': is_critical,
             'critical_percentage': float(critical_percentage),
-            'coordinates': get_default_district_coordinates(district_name),
+            'coordinates': get_district_centroid_from_geometry(district_geom) if district_geom else get_default_district_coordinates(district_name),
             'analysis_date': end_date,
-            'severity': get_severity_level(avg_ndvi, critical_percentage)
+            'severity': get_severity_level(avg_ndvi, critical_percentage),
+            'data_source': 'gcp_asset' if district_geom else 'fallback_coords',
+            'geometry_available': district_geom is not None
         }
         
     except Exception as e:
@@ -1896,7 +2145,8 @@ def create_simulated_critical_analysis(district_name, threshold_min, threshold_m
         'coordinates': get_default_district_coordinates(district_name),
         'analysis_date': '2025-05-28',
         'severity': get_severity_level(avg_ndvi, critical_percentage),
-        'data_source': 'simulated'
+        'data_source': 'simulated',
+        'geometry_available': False
     }
 
 def get_severity_level(avg_ndvi, critical_percentage):

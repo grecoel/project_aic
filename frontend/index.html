@@ -50,6 +50,14 @@
                             <span>Mode Koordinat</span>
                         </label>
                     </div>
+                    
+                    <!-- Clear Results Button -->
+                    <div class="clear-section" style="margin-top: 15px;">
+                        <button id="clearResultsBtn" class="btn btn-secondary">
+                            <i class="fas fa-eraser"></i>
+                            Bersihkan Hasil
+                        </button>
+                    </div>
                     <div class="input-group" id="coordinateInputs" style="display: none;">
                         <div class="input-field">
                             <label for="latitude">Latitude:</label>
@@ -143,12 +151,23 @@
 
                 <!-- Results Panel -->
                 <div class="results-container">
-                    <h3><i class="fas fa-chart-bar"></i> Hasil Analisis</h3>
+                    <div class="results-header">
+                        <h3><i class="fas fa-chart-bar"></i> Hasil Analisis</h3>
+                        <button id="downloadPdfBtn" class="btn btn-download hidden" title="Download Hasil Analisis PDF">
+                            <i class="fas fa-download"></i> Download PDF
+                        </button>
+                    </div>
                     
                     <!-- Loading Indicator -->
                     <div id="loading" class="loading hidden">
                         <i class="fas fa-spinner fa-spin"></i>
-                        <p>Menganalisis data satelit...</p>
+                        <p id="loadingText">Menganalisis data satelit...</p>
+                        <div class="loading-bar-container">
+                            <div class="loading-bar">
+                                <div id="loadingProgress" class="loading-progress"></div>
+                            </div>
+                            <span id="loadingPercentage" class="loading-percentage">0%</span>
+                        </div>
                     </div>
 
                     <!-- NDVI Data -->
@@ -427,6 +446,36 @@
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"
             integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo="
             crossorigin=""></script>
+    
+    <!-- jsPDF for PDF generation -->
+    <script src="https://unpkg.com/jspdf@2.5.1/dist/jspdf.umd.min.js"></script>
+    <script>
+        // Debug jsPDF loading
+        setTimeout(() => {
+            console.log('Checking jsPDF availability...');
+            console.log('window.jsPDF:', typeof window.jsPDF);
+            console.log('window.jspdf:', typeof window.jspdf);
+            console.log('Available window properties containing "pdf":', 
+                Object.keys(window).filter(key => key.toLowerCase().includes('pdf')));
+            
+            // Fallback untuk jsPDF jika primary CDN gagal
+            if (typeof window.jsPDF === 'undefined' && typeof window.jspdf === 'undefined') {
+                console.log('Loading jsPDF fallback...');
+                var script = document.createElement('script');
+                script.src = 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js';
+                script.onload = function() {
+                    console.log('jsPDF fallback loaded successfully');
+                    console.log('After fallback - window.jsPDF:', typeof window.jsPDF);
+                };
+                script.onerror = function() {
+                    console.error('Failed to load jsPDF fallback');
+                };
+                document.head.appendChild(script);
+            } else {
+                console.log('jsPDF loaded successfully');
+            }
+        }, 1000);
+    </script>
     
     <!-- Custom JavaScript -->
     <script src="js/script.js"></script>
