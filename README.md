@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 # Green Urban Dashboard - Semarang
 
 Platform web interaktif untuk menganalisis data vegetasi di Kota Semarang hingga level kecamatan menggunakan AI dan data satelit Sentinel-2.
@@ -250,3 +251,6 @@ Project ini dibuat untuk AI Innovation Challenge 2025 dengan tema "Smart City an
 ---
 
 *Dashboard ini menggunakan data satelit Sentinel-2 dari Copernicus Programme dan Google Earth Engine untuk analisis vegetasi urban di Indonesia.*
+=======
+# project_aic
+>>>>>>> c0a5a75e9d0138ab7caa82175b7c1b998150fef1
